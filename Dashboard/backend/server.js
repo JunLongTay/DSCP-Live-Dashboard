@@ -179,7 +179,7 @@ app.get('/air-temp', async (req, res) => {
 
 // 7) Get ALL soil moisture data (limited for performance)
 app.get('/moisture-all', async (req, res) => {
-  const limit = getLimit(req, 200); // Default to 200 rows, adjustable with ?limit=
+  const limit = getLimit(req, 100); // Default to 100 rows, adjustable with ?limit=
   const cacheKey = `/moisture-all-${limit}`;
   const cached = getCached(cacheKey);
   if (cached) return res.json(cached);

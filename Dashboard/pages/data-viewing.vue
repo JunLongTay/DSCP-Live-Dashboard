@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6">
+  <div class="container mx-auto p-6">
     <h1 class="text-2xl font-bold mb-4">Database Sample Rows</h1>
 
     <div v-if="samples.length">
