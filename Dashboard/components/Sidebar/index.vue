@@ -60,7 +60,7 @@ interface Item {
 const items: Item[] = [
   { label: 'Overview',           to: '/',             icon: 'lucide:home' },
   { label: 'Live Plant Dashboard', to: '/live-plant', icon: 'lucide:leaf' },
-  { label: 'Account',            to: '/account',      icon: 'lucide:user-circle' },
+  { label: 'DataBased Sample',            to: '/data-viewing',      icon: 'lucide:user-circle' },
   { label: 'Contacts',           to: '/contacts',     icon: 'lucide:book' },
   { label: 'Settings',           to: '/settings',     icon: 'lucide:settings' }
 ]
