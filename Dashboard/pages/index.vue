@@ -110,6 +110,12 @@ function soilChartDataSingle(label: string): ChartData<'line'> {
   }
 }
 
+// pull bucketed moisture for charts that need it
+const { data: moistureRaw } = await useFetch(
+  'http://localhost:3001/moisture-all',
+  { query: { bucket_min: 10, window_min: 180 } }
+)
+
 // 🔴 CO₂ Forecast
 const co2Raw = await $fetch<CO2Reading[]>('http://localhost:3001/soil-temp-co2')
 
@@ -149,4 +155,5 @@ const co2ForecastData = computed<ChartData<'line'>>(() => {
     ]
   }
 })
+
 </script>

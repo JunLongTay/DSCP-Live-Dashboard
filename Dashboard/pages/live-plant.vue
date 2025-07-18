@@ -2,33 +2,90 @@
   <div class="p-6 space-y-8">
     <h1 class="text-2xl font-bold mb-4">Soil Moisture Forecast</h1>
 
-    <!-- Multi-Select Device Filter -->
-    <div>
-      <label for="device-filter" class="block font-medium mb-1">Filter by Device(s)</label>
-      <select
-        id="device-filter"
-        v-model="selectedDevices"
-        multiple
-        class="border rounded p-2 w-full max-w-xl h-32"
+    <!-- 🔹 Device Slicer -->
+<div class="w-full max-w-xl">
+  <!-- Label + live‑count -->
+  <div class="flex items-center justify-between mb-2">
+    <label class="font-medium">Filter by Device(s)</label>
+    <span class="text-sm text-gray-500">{{ selected.length }} selected</span>
+  </div>
+
+  <!-- Selected chips -->
+  <div class="flex flex-wrap gap-2 mb-3">
+    <span
+      v-for="d in selected"
+      :key="d"
+      class="bg-blue-100 text-blue-800 px-3 py-0.5 rounded-full flex items-center"
+    >
+      {{ d }}
+      <button
+        @click="remove(d)"
+        class="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none"
       >
-        <option
-          v-for="(device, i) in deviceOptions"
-          :key="i"
-          :value="device"
+        ×
+      </button>
+    </span>
+
+    <button
+      v-if="selected.length"
+      @click="clearAll"
+      class="ml-auto text-sm text-red-600 hover:underline"
+    >
+      Clear All
+    </button>
+  </div>
+
+  <!-- Combobox -->
+  <Combobox v-model="selected" multiple>
+    <div class="relative">
+      <ComboboxInput
+        v-model="query"
+        placeholder="Type to search devices…"
+        class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+      />
+
+      <Transition
+        enter="transition ease-out duration-100"
+        enter-from="opacity-0"
+        enter-to="opacity-100"
+        leave="transition ease-in duration-75"
+        leave-from="opacity-100"
+        leave-to="opacity-0"
+      >
+        <ComboboxOptions
+          v-if="options.length"
+          class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-800 border rounded shadow max-h-60 overflow-auto"
         >
-          {{ device }}
-        </option>
-      </select>
-      <p class="text-sm text-gray-500 mt-1">
-        Hold Ctrl (Windows) or Command (Mac) to select multiple devices
-      </p>
+          <!-- Select‑All / Deselect‑All toggle -->
+          <ComboboxOption
+            :value="'__ALL__'"
+            class="px-3 py-2 font-medium bg-gray-50 cursor-pointer hover:bg-gray-100"
+            @click.prevent="toggleAll"
+          >
+            {{ allSelected ? 'Deselect All' : 'Select All' }}
+          </ComboboxOption>
+
+          <!-- Individual devices -->
+          <ComboboxOption
+            v-for="d in options"
+            :key="d"
+            :value="d"
+            class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700"
+          >
+            {{ d }}
+          </ComboboxOption>
+        </ComboboxOptions>
+      </Transition>
     </div>
+  </Combobox>
+</div>
 
     <!-- Moisture Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <MoistureCard
-        v-for="(device, index) in selectedDevices"
+        v-for="(device, index) in selected"
         :key="device + '-latest'"
+        :device="device"
         :title="`${device} Latest`"
         :value="latestMoisture[device] ?? 0"
         :change="round(latestMoisture[device] - forecastValues[device]?.[29])"
@@ -36,8 +93,9 @@
         :status="statusTag(latestMoisture[device])"
       />
       <MoistureCard
-        v-for="(device, index) in selectedDevices"
+        v-for="(device, index) in selected"
         :key="device + '-forecast'"
+        :device="device"
         :title="`${device} Forecast Day 30`"
         :value="forecastValues[device]?.[29] ?? 0"
         :change="round(forecastValues[device]?.[29] - latestMoisture[device])"
@@ -47,11 +105,11 @@
     </div>
 
     <!-- Historical Charts -->
-    <section v-if="selectedDevices.length">
+    <section v-if="selected.length">
       <h2 class="text-lg font-semibold mb-2">Recent Soil Moisture Readings</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div
-          v-for="device in selectedDevices"
+          v-for="device in selected"
           :key="device + '-chart'"
           class="bg-white dark:bg-zinc-800 p-4 rounded shadow"
         >
@@ -82,6 +140,13 @@ import {
 } from 'chart.js'
 import type { ChartData, ChartOptions } from 'chart.js'
 
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxOptions,
+  ComboboxOption,
+} from '@headlessui/vue'        // npm i @headlessui/vue
+
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale, Filler)
 
 interface MoistureData {
@@ -90,17 +155,67 @@ interface MoistureData {
   moisture: number
 }
 
-const { data: rawData } = await useFetch<MoistureData[]>('http://localhost:3001/moisture-all')
+/* ── reactive state ───────────────────────────── */
+const selected  = ref<string[]>([])      // replaces selectedDevices in template
+const query     = ref('')
 
-const selectedDevices = ref<string[]>([])
+/* unique device list from your existing rawData */
+const allDevices = computed(() =>
+  Array.from(
+    new Set(
+      (rawData.value ?? [])
+        .map(r => r.devicename)
+        .filter(name => /plant pot/i.test(name))   // ← keep only “Plant Pot”
+    )
+  ).sort()
+)
+
+/* live‑filtered dropdown list (excludes already‑selected) */
+const options = computed(() => {
+  const q = query.value.toLowerCase().trim()
+  return allDevices.value
+    .filter(d => !selected.value.includes(d))
+    .filter(d => !q || d.toLowerCase().includes(q))
+})
+
+/* helper flags & actions */
+const allSelected = computed(() =>
+  selected.value.length === allDevices.value.length
+)
+
+function toggleAll() {
+  selected.value = allSelected.value ? [] : [...allDevices.value]
+}
+
+function remove(d: string) {
+  selected.value = selected.value.filter(x => x !== d)
+}
+
+function clearAll() {
+  selected.value = []
+  query.value    = ''
+}
+
+/* optional: pre‑select first two on mount */
+onMounted(() => {
+  if (!selected.value.length && allDevices.value.length) {
+    selected.value = allDevices.value.slice(0, 2)
+  }
+})
+
+const { data: rawData } = await useFetch<MoistureData[]>(
+  'http://localhost:3001/moisture-all',
+  { query: { bucket_min: 10, window_min: 180 } }
+)
+
 const deviceOptions = computed(() => {
   const names = new Set((rawData.value ?? []).map(d => d.devicename))
   return [...names]
 })
 
 onMounted(() => {
-  if (deviceOptions.value.length && selectedDevices.value.length === 0) {
-    selectedDevices.value = deviceOptions.value.slice(0, 2)
+  if (deviceOptions.value.length && selected.value.length === 0) {
+    selected.value = deviceOptions.value.slice(0, 2)
   }
 })
 
@@ -115,7 +230,7 @@ const deviceData = computed(() => {
 
 const latestMoisture = computed(() => {
   const latest: Record<string, number> = {}
-  for (const device of selectedDevices.value) {
+  for (const device of selected.value) {
     latest[device] = round(deviceData.value[device]?.[0]?.moisture ?? 0)
   }
   return latest
@@ -123,7 +238,7 @@ const latestMoisture = computed(() => {
 
 const forecastValues = computed(() => {
   const forecasted: Record<string, number[]> = {}
-  for (const device of selectedDevices.value) {
+  for (const device of selected.value) {
     forecasted[device] = forecast(deviceData.value[device] ?? [])
   }
   return forecasted
@@ -144,8 +259,8 @@ const chartOptions: ChartOptions<'line'> = {
   maintainAspectRatio: false,
   scales: {
     y: {
-      min: 50,
-      max: 60,
+      min: 48,
+      max: 65,
       ticks: {
         stepSize: 0.5,
         callback: value => `${Number(value).toFixed(1)}%`
@@ -177,7 +292,7 @@ function historicalChart(data: MoistureData[], label: string): ChartData<'line'>
 }
 
 function forecast(data: MoistureData[]): number[] {
-  const y = data.map(d => d.moisture).reverse()
+  const y = data.map(d => d.moisture)
   const x = y.map((_, i) => i)
 
   const n = x.length
@@ -199,34 +314,43 @@ function forecast(data: MoistureData[]): number[] {
   })
 }
 
-const forecastChart = computed<ChartData<'line'>>(() => {
+/* ─── 1) 30‑day datasets + global y‑min / y‑max ───────────────────────── */
+const forecastChart = computed(() => {
   const labels = [...Array(30)].map((_, i) => `Day ${i + 1}`)
-  const datasets = selectedDevices.value.map((device, index) => ({
-    label: `${device} Forecast`,
-    data: forecastValues.value[device],
-    borderColor: `hsl(${index * 40}, 70%, 50%)`,
-    backgroundColor: `hsla(${index * 40}, 70%, 50%, 0.1)`,
-    fill: true
+
+  const datasets = selected.value.map((device, idx) => ({
+    label : `${device} Forecast`,
+    data  : forecastValues.value[device],
+    borderColor     : `hsl(${idx * 40}, 70%, 50%)`,
+    backgroundColor : `hsla(${idx * 40}, 70%, 50%, 0.1)`,
+    fill            : true,
+    pointRadius     : 3
   }))
-  return { labels, datasets }
+
+  // find global min / max across all devices
+  const allVals = datasets.flatMap(ds => ds.data)
+  const pad     = 0.3                               // % points padding
+  const yMin    = Math.floor(Math.min(...allVals) - pad)
+  const yMax    = Math.ceil (Math.max(...allVals) + pad)
+
+  // return both the data and the limits
+  return { labels, datasets, yMin, yMax }
 })
 
-const forecastOptions: ChartOptions<'line'> = {
+/* ─── 2) options that use those limits ────────────────────────────────── */
+const forecastOptions = computed<ChartOptions<'line'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
   scales: {
     y: {
-      min: 50,
-      max: 60,
-      ticks: {
-        stepSize: 0.5,
-        callback: value => `${Number(value).toFixed(1)}%`
-      },
+      min : forecastChart.value.yMin,
+      max : forecastChart.value.yMax,
+      ticks: { callback: v => `${v}%` },
       title: { display: true, text: 'Moisture (%)' }
     },
     x: {
       title: { display: true, text: 'Day' }
     }
   }
-}
+}))
 </script>

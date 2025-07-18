@@ -177,27 +177,39 @@ app.get('/air-temp', async (req, res) => {
   }
 });
 
-// 7) Get ALL soil moisture data (limited for performance)
+// 7) Soil‑moisture endpoint with time‑bucketing
 app.get('/moisture-all', async (req, res) => {
-  const limit = getLimit(req, 100); // Default to 100 rows, adjustable with ?limit=
-  const cacheKey = `/moisture-all-${limit}`;
-  const cached = getCached(cacheKey);
-  if (cached) return res.json(cached);
+  const bucketMin = Math.max(parseInt(req.query.bucket_min) || 2, 1);
+  const windowMin = Math.max(parseInt(req.query.window_min) || 120, bucketMin);
+
+  const cacheKey = `/moisture-all-${bucketMin}-${windowMin}`;
+  const cached   = getCached(cacheKey);
+  if (cached) {
+    console.log('[moisture-all] cache hit', cached.length, 'rows');
+    return res.json(cached);
+  }
 
   try {
-    const { rows } = await pool.query(`
+    const { rows } = await pool.query(
+      `
+      /* average moisture into N‑minute buckets within the recent window */
       SELECT
-        dd.devicetimestamp AS timestamp,
+        date_trunc('minute', dd.devicetimestamp)
+          - make_interval(mins := EXTRACT(MINUTE FROM dd.devicetimestamp)::int % $1)
+          AS timestamp,
         d.devicename,
-        sd.value::float AS moisture
-      FROM devicedata dd
-      JOIN sensordata sd ON sd.devicedataid = dd.devicedataid
-      JOIN sensors s ON sd.sensorid = s.sensorid
-      JOIN devices d ON dd.deviceid = d.deviceid
+        AVG(sd.value::float) AS moisture
+      FROM devicedata  dd
+      JOIN sensordata  sd ON sd.devicedataid = dd.devicedataid
+      JOIN sensors     s  ON sd.sensorid     = s.sensorid
+      JOIN devices     d  ON dd.deviceid     = d.deviceid
       WHERE s.sensor = 'Soil Moisture'
-      ORDER BY dd.devicetimestamp DESC
-      LIMIT $1
-    `, [limit]);
+        AND dd.devicetimestamp >= NOW() - make_interval(mins := $2)
+      GROUP BY timestamp, d.devicename
+      ORDER BY timestamp DESC
+      `,
+      [bucketMin, windowMin]
+    );
 
     setCache(cacheKey, rows);
     res.json(rows);

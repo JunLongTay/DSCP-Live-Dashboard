@@ -11,23 +11,26 @@
       {{ isNaN(props.value) ? '--' : props.value.toFixed(1) }}%
     </div>
 
-    <!-- 2) Change Line Below the Number -->
+   <!-- Value‑change line -->
     <div
       v-if="props.change !== undefined"
-      class="flex items-baseline text-sm text-gray-500 gap-1"
+      class="flex items-baseline text-sm gap-1"
+      :class="{
+        'text-green-500': props.change > 0,
+        'text-red-500':   props.change < 0,
+        'text-gray-400':  props.change === 0
+      }"
     >
-      <!-- change amount -->
-      <span
-        :class="{
-          'text-green-500': props.change > 0,
-          'text-red-500':   props.change < 0,
-          'text-gray-400':  props.change === 0
-        }"
-      >
-        {{ formatChange(props.change) }}%
+      <!-- Δ percentage -->
+      <span>{{ formatChange(props.change) }}%</span>
+
+      <!-- Device + context label -->
+      <span class="text-gray-500 dark:text-gray-400">
+        — {{ props.device }}
+        <template v-if="props.changeLabel">
+          ({{ props.changeLabel }})
+        </template>
       </span>
-      <!-- static “vs forecast” label -->
-      <span>(vs forecast)</span>
     </div>
 
     <!-- 3) Status Tag -->
@@ -55,6 +58,7 @@ import {
 
 const props = defineProps<{
   title:        string
+  device:       string
   value:        number
   change?:      number
   changeLabel?: string
