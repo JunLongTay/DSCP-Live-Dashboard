@@ -1,7 +1,12 @@
 {
+  "name": "compost-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "compression": "^1.8.0",
-    "start": "node server.js",
     "cors": "^2.8.5",
     "crs": "^0.0.01",
     "dotenv": "^17.2.0",
