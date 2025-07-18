@@ -35,15 +35,14 @@
     </button>
   </div>
 
-  <!-- Combobox -->
   <Combobox v-model="selected" multiple>
     <div class="relative">
-      <ComboboxInput
-        v-model="query"
-        placeholder="Type to search devices…"
-        class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-      />
+      <!-- Button that toggles the dropdown -->
+      <ComboboxButton class="w-full border rounded p-2 bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-400">
+        Add more devices
+      </ComboboxButton>
 
+      <!-- Dropdown options -->
       <Transition
         enter="transition ease-out duration-100"
         enter-from="opacity-0"
@@ -51,27 +50,27 @@
         leave="transition ease-in duration-75"
         leave-from="opacity-100"
         leave-to="opacity-0"
-      >
+    >
         <ComboboxOptions
           v-if="options.length"
           class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-800 border rounded shadow max-h-60 overflow-auto"
-        >
-          <!-- Select‑All / Deselect‑All toggle -->
+      >
+          <!-- Select All / Deselect All toggle -->
           <ComboboxOption
             :value="'__ALL__'"
             class="px-3 py-2 font-medium bg-gray-50 cursor-pointer hover:bg-gray-100"
             @click.prevent="toggleAll"
-          >
-            {{ allSelected ? 'Deselect All' : 'Select All' }}
+        >
+            {{ allSelected ? 'Deselect All' : 'Select All' }}
           </ComboboxOption>
 
-          <!-- Individual devices -->
+          <!-- Devices -->
           <ComboboxOption
             v-for="d in options"
             :key="d"
             :value="d"
             class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700"
-          >
+        >
             {{ d }}
           </ComboboxOption>
         </ComboboxOptions>
@@ -80,28 +79,43 @@
   </Combobox>
 </div>
 
-    <!-- Moisture Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <MoistureCard
-        v-for="(device, index) in selected"
-        :key="device + '-latest'"
-        :device="device"
-        :title="`${device} Latest`"
-        :value="latestMoisture[device] ?? 0"
-        :change="round(latestMoisture[device] - forecastValues[device]?.[29])"
-        :changeLabel="'vs forecast'"
-        :status="statusTag(latestMoisture[device])"
-      />
-      <MoistureCard
-        v-for="(device, index) in selected"
-        :key="device + '-forecast'"
-        :device="device"
-        :title="`${device} Forecast Day 30`"
-        :value="forecastValues[device]?.[29] ?? 0"
-        :change="round(forecastValues[device]?.[29] - latestMoisture[device])"
-        :changeLabel="'vs current'"
-        :status="statusTag(forecastValues[device]?.[29])"
-      />
+<!-- Moisture Summary Cards: 4 columns on md+ -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+  <MoistureCard
+    v-for="(device, index) in selected"
+    :key="device + '-latest'"
+    :device="device"
+    :title="`${device} Latest`"
+    :value="latestMoisture[device] ?? 0"
+    :change="round(latestMoisture[device] - forecastValues[device]?.[29])"
+    :changeLabel="'vs forecast'"
+    :status="statusTag(latestMoisture[device])"
+    :isForecast="false"
+  />
+  <MoistureCard
+    v-for="(device, index) in selected"
+    :key="device + '-forecast'"
+    :device="device"
+    :title="`${device} Forecast Day 30`"
+    :value="forecastValues[device]?.[29] ?? 0"
+    :change="round(forecastValues[device]?.[29] - latestMoisture[device])"
+    :changeLabel="'vs current'"
+    :status="statusTag(forecastValues[device]?.[29])"
+    :isForecast="true"
+  />
+</div>
+
+
+
+
+  <!-- Time Range Selector -->
+    <div class="flex gap-3 items-center mb-4">
+      <label class="font-medium">Time Range:</label>
+      <select v-model="selectedRange" class="border rounded p-2 text-sm">
+        <option value="short">Short (1 Day)</option>
+        <option value="medium">Medium (3 Days)</option>
+        <option value="long">Long (7 Days)</option>
+      </select>
     </div>
 
     <!-- Historical Charts -->
@@ -113,7 +127,7 @@
           :key="device + '-chart'"
           class="bg-white dark:bg-zinc-800 p-4 rounded shadow"
         >
-          <Line :data="historicalChart(deviceData[device] ?? [], device)" :options="chartOptions" class="h-60" />
+          <Line :data="historicalChart(deviceData[device] ?? [], device)" :options="getChartOptions()" class="h-60" />
         </div>
       </div>
     </section>
@@ -126,10 +140,12 @@
       </div>
     </section>
   </div>
+
+
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
 import MoistureCard from '../components/MoistureCard.vue'
 import {
@@ -139,13 +155,12 @@ import {
   CategoryScale, LinearScale, Filler
 } from 'chart.js'
 import type { ChartData, ChartOptions } from 'chart.js'
-
 import {
   Combobox,
-  ComboboxInput,
+  ComboboxButton,
   ComboboxOptions,
   ComboboxOption,
-} from '@headlessui/vue'        // npm i @headlessui/vue
+} from '@headlessui/vue'
 
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale, Filler)
 
@@ -155,30 +170,42 @@ interface MoistureData {
   moisture: number
 }
 
-/* ── reactive state ───────────────────────────── */
-const selected  = ref<string[]>([])      // replaces selectedDevices in template
-const query     = ref('')
+/* ── Config & Time Range ───────────────────────────── */
+const selectedRange = ref<'short' | 'medium' | 'long'>('short')
+const timeConfigs = {
+  short:  { bucket_min: 60, window_min: 1440 },
+  medium: { bucket_min: 180, window_min: 4320 },
+  long:   { bucket_min: 1440, window_min: 10080 }
+}
 
-/* unique device list from your existing rawData */
-const allDevices = computed(() =>
-  Array.from(
-    new Set(
-      (rawData.value ?? [])
-        .map(r => r.devicename)
-        .filter(name => /plant pot/i.test(name))   // ← keep only “Plant Pot”
-    )
-  ).sort()
-)
+/* ── State ───────────────────────────── */
+const selected = ref<string[]>([])
+const query = ref('')
+const rawData = ref<MoistureData[]>([])
 
-/* live‑filtered dropdown list (excludes already‑selected) */
-const options = computed(() => {
-  const q = query.value.toLowerCase().trim()
-  return allDevices.value
-    .filter(d => !selected.value.includes(d))
-    .filter(d => !q || d.toLowerCase().includes(q))
+/* ── Fetch Data ───────────────────────────── */
+watchEffect(async () => {
+  const config = timeConfigs[selectedRange.value]
+  const { data } = await useFetch<MoistureData[]>(
+    'http://localhost:3001/moisture-all',
+    { query: config }
+  )
+  rawData.value = data.value ?? []
 })
 
-/* helper flags & actions */
+/* ── Device Management ───────────────────────────── */
+const allDevices = computed(() =>
+  Array.from(new Set(
+    (rawData.value ?? [])
+      .map(r => r.devicename)
+      .filter(name => /plant pot/i.test(name))
+  )).sort()
+)
+
+const options = computed(() =>
+  allDevices.value.filter(d => !selected.value.includes(d))
+)
+
 const allSelected = computed(() =>
   selected.value.length === allDevices.value.length
 )
@@ -186,39 +213,21 @@ const allSelected = computed(() =>
 function toggleAll() {
   selected.value = allSelected.value ? [] : [...allDevices.value]
 }
-
 function remove(d: string) {
   selected.value = selected.value.filter(x => x !== d)
 }
-
 function clearAll() {
   selected.value = []
-  query.value    = ''
+  query.value = ''
 }
 
-/* optional: pre‑select first two on mount */
 onMounted(() => {
   if (!selected.value.length && allDevices.value.length) {
     selected.value = allDevices.value.slice(0, 2)
   }
 })
 
-const { data: rawData } = await useFetch<MoistureData[]>(
-  'http://localhost:3001/moisture-all',
-  { query: { bucket_min: 10, window_min: 180 } }
-)
-
-const deviceOptions = computed(() => {
-  const names = new Set((rawData.value ?? []).map(d => d.devicename))
-  return [...names]
-})
-
-onMounted(() => {
-  if (deviceOptions.value.length && selected.value.length === 0) {
-    selected.value = deviceOptions.value.slice(0, 2)
-  }
-})
-
+/* ── Data Structuring ───────────────────────────── */
 const deviceData = computed(() => {
   const grouped: Record<string, MoistureData[]> = {}
   for (const d of rawData.value ?? []) {
@@ -244,6 +253,7 @@ const forecastValues = computed(() => {
   return forecasted
 })
 
+/* ── Utility Functions ───────────────────────────── */
 function round(val: number) {
   return Math.round(val * 10) / 10
 }
@@ -254,50 +264,23 @@ function statusTag(value: number) {
   return 'Healthy'
 }
 
-const chartOptions: ChartOptions<'line'> = {
-  responsive: true,
-  maintainAspectRatio: false,
-  scales: {
-    y: {
-      min: 48,
-      max: 65,
-      ticks: {
-        stepSize: 0.5,
-        callback: value => `${Number(value).toFixed(1)}%`
-      },
-      title: { display: true, text: 'Moisture (%)' }
-    },
-    x: {
-      title: { display: true, text: 'Time' }
-    }
-  }
-}
-
-function historicalChart(data: MoistureData[], label: string): ChartData<'line'> {
-  const sliced = data.slice(0, 100)
-  return {
-    labels: sliced.map(d => new Date(d.timestamp).toLocaleTimeString()).reverse(),
-    datasets: [
-      {
-        label,
-        data: sliced.map(d => d.moisture).reverse(),
-        borderColor: 'rgb(54, 162, 235)',
-        backgroundColor: 'rgba(0,0,0,0)',
-        pointRadius: 0,
-        tension: 0.3,
-        fill: false
-      }
-    ]
-  }
-}
-
 function forecast(data: MoistureData[]): number[] {
-  const y = data.map(d => d.moisture)
-  const x = y.map((_, i) => i)
+  const yRaw = data.map(d => d.moisture)
+  if (yRaw.length === 0) return Array(30).fill(0)
 
+  const smoothed: number[] = []
+  const window = 5
+  for (let i = 0; i < yRaw.length; i++) {
+    const start = Math.max(0, i - window + 1)
+    const avg = yRaw.slice(start, i + 1).reduce((a, b) => a + b, 0) / (i - start + 1)
+    smoothed.push(avg)
+  }
+
+  const x = smoothed.map((_, i) => i)
+  const y = smoothed
   const n = x.length
-  const xMean = x.reduce((a, b) => a + b, 0) / n
-  const yMean = y.reduce((a, b) => a + b, 0) / n
+  const xMean = x.reduce((a, b) => a + b) / n
+  const yMean = y.reduce((a, b) => a + b) / n
 
   let num = 0, den = 0
   for (let i = 0; i < n; i++) {
@@ -310,41 +293,82 @@ function forecast(data: MoistureData[]): number[] {
 
   return [...Array(30)].map((_, i) => {
     const xi = n + i
-    return round(slope * xi + intercept)
+    const trend = slope * xi + intercept
+    const jitter = (Math.random() - 0.5) * 0.4
+    return round(trend + jitter)
   })
 }
 
-/* ─── 1) 30‑day datasets + global y‑min / y‑max ───────────────────────── */
+/* ── Chart Options ───────────────────────────── */
+function historicalChart(data: MoistureData[], label: string): ChartData<'line'> {
+  const sliced = data.slice(0, 100)
+  const format: Intl.DateTimeFormatOptions = selectedRange.value === 'long'
+    ? { weekday: 'short', month: 'short', day: 'numeric' }
+    : { hour: '2-digit', minute: '2-digit' }
+
+  return {
+    labels: sliced.map(d => new Date(d.timestamp).toLocaleString(undefined, format)).reverse(),
+    datasets: [{
+      label,
+      data: sliced.map(d => d.moisture).reverse(),
+      borderColor: 'rgb(54, 162, 235)',
+      backgroundColor: 'rgba(0,0,0,0)',
+      pointRadius: 0,
+      tension: 0.3,
+      fill: false
+    }]
+  }
+}
+
+function getChartOptions(): ChartOptions<'line'> {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        min: moistureYAxisRange.value.min,
+        max: moistureYAxisRange.value.max,
+        ticks: {
+          stepSize: 0.5,
+          callback: value => `${Number(value).toFixed(1)}%`
+        },
+        title: { display: true, text: 'Moisture (%)' }
+      },
+      x: {
+        title: { display: true, text: 'Time' }
+      }
+    }
+  }
+}
+
+
 const forecastChart = computed(() => {
   const labels = [...Array(30)].map((_, i) => `Day ${i + 1}`)
 
   const datasets = selected.value.map((device, idx) => ({
-    label : `${device} Forecast`,
-    data  : forecastValues.value[device],
-    borderColor     : `hsl(${idx * 40}, 70%, 50%)`,
-    backgroundColor : `hsla(${idx * 40}, 70%, 50%, 0.1)`,
-    fill            : true,
-    pointRadius     : 3
+    label: `${device} Forecast`,
+    data: forecastValues.value[device],
+    borderColor: `hsl(${idx * 40}, 70%, 50%)`,
+    backgroundColor: `hsla(${idx * 40}, 70%, 50%, 0.1)`,
+    fill: true,
+    pointRadius: 3
   }))
 
-  // find global min / max across all devices
   const allVals = datasets.flatMap(ds => ds.data)
-  const pad     = 0.3                               // % points padding
-  const yMin    = Math.floor(Math.min(...allVals) - pad)
-  const yMax    = Math.ceil (Math.max(...allVals) + pad)
+  const pad = 0.3
+  const yMin = Math.floor(Math.min(...allVals) - pad)
+  const yMax = Math.ceil(Math.max(...allVals) + pad)
 
-  // return both the data and the limits
   return { labels, datasets, yMin, yMax }
 })
 
-/* ─── 2) options that use those limits ────────────────────────────────── */
 const forecastOptions = computed<ChartOptions<'line'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
   scales: {
     y: {
-      min : forecastChart.value.yMin,
-      max : forecastChart.value.yMax,
+      min: forecastChart.value.yMin,
+      max: forecastChart.value.yMax,
       ticks: { callback: v => `${v}%` },
       title: { display: true, text: 'Moisture (%)' }
     },
@@ -353,4 +377,27 @@ const forecastOptions = computed<ChartOptions<'line'>>(() => ({
     }
   }
 }))
+
+const moistureYAxisRange = computed(() => {
+  const allValues: number[] = []
+
+  for (const device of selected.value) {
+    const readings = deviceData.value[device] ?? []
+    for (const d of readings) {
+      allValues.push(d.moisture)
+    }
+  }
+
+  if (!allValues.length) return { min: 0, max: 100 }
+
+  const min = Math.min(...allValues)
+  const max = Math.max(...allValues)
+
+  const pad = 2 // percentage points
+  return {
+    min: Math.floor(min - pad),
+    max: Math.ceil(max + pad)
+  }
+})
+
 </script>

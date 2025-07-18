@@ -2,7 +2,10 @@
   "dependencies": {
     "compression": "^1.8.0",
     "cors": "^2.8.5",
+    "crs": "^0.0.01",
+    "dotenv": "^17.2.0",
     "express": "^5.1.0",
+    "node-fetch": "^3.3.2",
     "pg": "^8.16.3"
   }
 }
