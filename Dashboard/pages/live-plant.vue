@@ -118,6 +118,40 @@
       </select>
     </div>
 
+  <!-- 🔽 Download CSV Button -->
+    <div class="mt-4">
+      <button
+        @click="downloadCSV"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded"
+      >
+        Download Moisture Data as CSV
+      </button>
+    </div>
+    
+    <!-- Format Toggle + Button -->
+    <div class="flex items-center gap-3 mt-4">
+      <select v-model="downloadFormat" class="border rounded p-2 text-sm">
+        <option value="csv">CSV</option>
+        <option value="xlsx">Excel</option>
+      </select>
+      <button
+        @click="downloadSelectedData"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded"
+      >
+        Download Selected Moisture Data
+      </button>
+    </div>
+
+<!-- Full Report Button -->
+    <div class="mt-3">
+      <button
+        @click="downloadFullDashboardReport"
+        class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded"
+      >
+        Download Full Dashboard Report (Excel)
+      </button>
+    </div>
+
     <!-- Historical Charts -->
     <section v-if="selected.length">
       <h2 class="text-lg font-semibold mb-2">Recent Soil Moisture Readings</h2>
@@ -161,6 +195,7 @@ import {
   ComboboxOptions,
   ComboboxOption,
 } from '@headlessui/vue'
+import * as XLSX from 'xlsx'
 
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale, Filler)
 
@@ -192,6 +227,117 @@ watchEffect(async () => {
   )
   rawData.value = data.value ?? []
 })
+
+/* ── Download Data ───────────────────────────── */
+function downloadCSV() {
+  if (!rawData.value.length || !selected.value.length) return
+
+  const header = ['Timestamp', 'Device Name', 'Moisture (%)']
+  const rows = rawData.value
+    .filter(d => selected.value.includes(d.devicename))
+    .map(d => [
+      new Date(d.timestamp).toISOString(),
+      d.devicename,
+      d.moisture.toFixed(1)
+    ])
+
+  if (!rows.length) return
+
+  const csvContent =
+    [header, ...rows]
+      .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', 'selected_moisture_data.csv')
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+const downloadFormat = ref<'csv' | 'xlsx'>('csv')
+
+function downloadSelectedData() {
+  if (!rawData.value.length || !selected.value.length) return
+
+  const filtered = rawData.value.filter(d => selected.value.includes(d.devicename))
+  if (!filtered.length) return
+
+  const rows = filtered.map(d => ({
+    Timestamp: new Date(d.timestamp).toISOString(),
+    'Device Name': d.devicename,
+    'Moisture (%)': d.moisture.toFixed(1)
+  }))
+
+  if (downloadFormat.value === 'csv') {
+    const csv = [
+      Object.keys(rows[0]),
+      ...rows.map(row => Object.values(row))
+    ]
+      .map(r => r.map(val => `"${val}"`).join(','))
+      .join('\n')
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'selected_moisture_data.csv'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  } else {
+    const worksheet = XLSX.utils.json_to_sheet(rows)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Selected Moisture Data')
+
+    XLSX.writeFile(workbook, 'selected_moisture_data.xlsx')
+  }
+}
+
+function downloadFullDashboardReport() {
+  const summary: any[] = []
+  for (const device of selected.value) {
+    const latest = latestMoisture.value[device]
+    const forecast = forecastValues.value[device]?.[29]
+    summary.push({
+      'Device': device,
+      'Latest Moisture (%)': latest,
+      'Forecast Day 30 Moisture (%)': forecast,
+      'Change (%)': round(forecast - latest)
+    })
+  }
+
+  const allHistorical: any[] = []
+  for (const device of selected.value) {
+    for (const d of deviceData.value[device] ?? []) {
+      allHistorical.push({
+        'Timestamp': new Date(d.timestamp).toISOString(),
+        'Device': device,
+        'Moisture (%)': d.moisture.toFixed(1)
+      })
+    }
+  }
+
+  const forecastData: any[] = []
+  for (const device of selected.value) {
+    forecastValues.value[device]?.forEach((val, i) => {
+      forecastData.push({
+        'Device': device,
+        'Day': i + 1,
+        'Forecast Moisture (%)': val
+      })
+    })
+  }
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'Summary')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allHistorical), 'Historical')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(forecastData), 'Forecast')
+
+  XLSX.writeFile(wb, 'soil_moisture_dashboard_report.xlsx')
+}
 
 /* ── Device Management ───────────────────────────── */
 const allDevices = computed(() =>
