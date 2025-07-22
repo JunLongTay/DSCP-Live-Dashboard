@@ -1,49 +1,59 @@
 <template>
-  <div class="p-6 space-y-12">
-
-    <!-- 🔹 Average NPK Levels -->
-    <section>
-      <h2 class="text-xl font-bold mb-4">Average NPK Levels</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="bg-white dark:bg-zinc-800 rounded shadow p-4">
-          <h3 class="font-semibold text-sm">Nitrogen</h3>
-          <p class="text-2xl font-bold text-blue-600">{{ avg.nitrogen }}</p>
-        </div>
-        <div class="bg-white dark:bg-zinc-800 rounded shadow p-4">
-          <h3 class="font-semibold text-sm">Phosphorus</h3>
-          <p class="text-2xl font-bold text-purple-600">{{ avg.phosphorus }}</p>
-        </div>
-        <div class="bg-white dark:bg-zinc-800 rounded shadow p-4">
-          <h3 class="font-semibold text-sm">Potassium</h3>
-          <p class="text-2xl font-bold text-green-600">{{ avg.potassium }}</p>
-        </div>
-      </div>
-    </section>
-
-<!-- 🔸 Soil Temp & Moisture -->
-<section v-if="soilRaw && soilRaw.length">
-  <h2 class="text-xl font-bold mb-4">Soil Temperature & Moisture</h2>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div class="bg-white dark:bg-zinc-800 rounded shadow p-4">
-      <LineChart :chart-data="soilChartDataSingle('Soil Temp (°C)')" />
+  <div class="relative min-h-screen w-full">
+    <!-- Sidebar absolutely positioned, flush with all edges -->
+    <div class="fixed top-0 left-0 bottom-0 w-64 h-full z-30">
+      <Sidebar />
     </div>
-    <div class="bg-white dark:bg-zinc-800 rounded shadow p-4">
-      <LineChart :chart-data="soilChartDataSingle('Moisture (%)')" />
-    </div>
-  </div>
-</section>
+    <!-- Main content, margin-left for sidebar -->
+    <div class="ml-64 relative min-h-screen">
+      <div class="p-6 space-y-12 bg-black min-h-screen animate-fade-in">
 
-    <!-- 🔸 CO₂ Forecast -->
-    <section v-if="co2ForecastData">
-      <h2 class="text-xl font-bold mb-4">CO₂ Forecast</h2>
-      <div class="bg-white dark:bg-zinc-800 rounded shadow p-4">
-        <LineChart :chart-data="co2ForecastData" />
+        <!-- 🔹 Average NPK Levels -->
+        <section>
+          <h2 class="text-xl font-bold mb-4 text-orange-400">Average NPK Levels</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+              <h3 class="font-semibold text-sm text-orange-300">Nitrogen</h3>
+              <p class="text-2xl font-bold text-orange-400">{{ avg.nitrogen }}</p>
+            </div>
+            <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+              <h3 class="font-semibold text-sm text-orange-300">Phosphorus</h3>
+              <p class="text-2xl font-bold text-orange-400">{{ avg.phosphorus }}</p>
+            </div>
+            <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+              <h3 class="font-semibold text-sm text-orange-300">Potassium</h3>
+              <p class="text-2xl font-bold text-orange-400">{{ avg.potassium }}</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 🔸 Soil Temp & Moisture -->
+        <section v-if="soilRaw && soilRaw.length">
+          <h2 class="text-xl font-bold mb-4 text-orange-400">Soil Temperature & Moisture</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+              <LineChart :chart-data="soilChartDataSingle('Soil Temp (°C)')" />
+            </div>
+            <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+              <LineChart :chart-data="soilChartDataSingle('Moisture (%)')" />
+            </div>
+          </div>
+        </section>
+
+        <!-- 🔸 CO₂ Forecast -->
+        <section v-if="co2ForecastData">
+          <h2 class="text-xl font-bold mb-4 text-orange-400">CO₂ Forecast</h2>
+          <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+            <LineChart :chart-data="co2ForecastData" />
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import Sidebar from '../components/Sidebar/index.vue'
 import LineChart from '../components/LineChart.vue'
 import type { ChartData } from 'chart.js'
 
@@ -157,3 +167,13 @@ const co2ForecastData = computed<ChartData<'line'>>(() => {
 })
 
 </script>
+
+<style scoped>
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-fade-in {
+  animation: fade-in 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+</style>

@@ -16,7 +16,7 @@
     </div>
 
     <!-- 1) Big Value -->
-    <div class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+    <div class="text-2xl sm:text-3xl font-bold text-orange-400">
       {{ isNaN(props.value) ? '--' : props.value.toFixed(1) }}%
     </div>
 

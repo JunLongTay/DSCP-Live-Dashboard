@@ -1,129 +1,168 @@
 <template>
-  <div class="p-6 space-y-8 font-sans">
-    <!-- 🔝 Header with Sticky Filter Bar -->
-    <div class="sticky top-0 z-40 bg-white dark:bg-zinc-900 shadow-md border-b pb-4">
-      <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
-        <h1 class="text-3xl font-bold">Soil Moisture Forecast</h1>
-        <div class="flex flex-wrap gap-4 items-center justify-end w-full md:w-auto">
-          <div class="flex items-center gap-2">
-            <label class="font-medium">Time Range:</label>
-            <select v-model="selectedRange" class="border rounded p-2 text-sm">
-              <option value="short">Short (1 Day)</option>
-              <option value="medium">Medium (3 Days)</option>
-              <option value="long">Long (7 Days)</option>
-            </select>
-          </div>
-          <!-- 📁 Export Dropdown -->
-          <div class="relative inline-block text-left">
-            <Menu as="div" class="relative">
-              <div>
-                <MenuButton class="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-blue-600 text-white font-semibold hover:bg-blue-700 focus:outline-none">
-                  Export Data ▼
-                </MenuButton>
-              </div>
-              <Transition enter="transition ease-out duration-100" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="transition ease-in duration-75" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
-                <MenuItems class="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
-                  <div class="py-1">
-                    <MenuItem>
-                      <div class="px-4 py-2 text-sm text-gray-800 font-semibold">Selected Data</div>
-                    </MenuItem>
-                    <MenuItem>
-                      <button @click="downloadSelectedData('csv')" class="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        Export as CSV
-                      </button>
-                    </MenuItem>
-                    <MenuItem>
-                      <button @click="downloadSelectedData('xlsx')" class="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        Export as Excel
-                      </button>
-                    </MenuItem>
-                    <hr class="my-1 border-gray-200" />
-                    <MenuItem>
-                      <div class="px-4 py-2 text-sm text-gray-800 font-semibold">Full Report</div>
-                    </MenuItem>
-                    <MenuItem>
-                      <button @click="downloadFullDashboardReport" class="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        Download All Charts + Summary
-                      </button>
-                    </MenuItem>
-                  </div>
-                </MenuItems>
-              </Transition>
-            </Menu>
+  <div class="relative min-h-screen w-full">
+    <!-- Blurred plant background with black overlay -->
+    <img src="/plant.jpeg" alt="Plant background" class="fixed top-0 left-0 w-full h-full object-cover z-0 blur-md opacity-70 pointer-events-none select-none" />
+    <div class="fixed top-0 left-0 w-full h-full bg-black/80 z-10 pointer-events-none" />
+    <!-- Sidebar absolutely positioned, flush with all edges, above overlay -->
+    <div class="fixed top-0 left-0 bottom-0 w-64 h-full z-30 border-r-2 border-orange-800 shadow-xl">
+      <Sidebar />
+    </div>
+    <!-- Main content, margin-left for sidebar, above overlay -->
+    <div class="ml-64 min-h-screen relative z-20 flex flex-col gap-10 px-6 md:px-12 py-8">
+      <!-- 🔝 Header with Sticky Filter Bar -->
+      <div class="sticky top-0 z-40 bg-zinc-900 shadow-md border-b border-orange-700 pb-4 mb-8">
+        <div class="flex flex-wrap justify-between items-center gap-6 mb-4">
+          <h1 class="text-3xl font-bold text-orange-400">Soil Moisture Forecast</h1>
+          <div class="flex flex-wrap gap-4 items-center justify-end w-full md:w-auto">
+            <div class="flex items-center gap-2">
+              <label class="font-medium text-orange-300">Time Range:</label>
+              <select v-model="selectedRange" class="border border-orange-500 rounded p-2 text-sm bg-zinc-900 text-orange-200">
+                <option value="short">Short (1 Day)</option>
+                <option value="medium">Medium (3 Days)</option>
+                <option value="long">Long (7 Days)</option>
+              </select>
+            </div>
+            <!-- 📁 Export Dropdown -->
+            <div class="relative inline-block text-left">
+              <Menu as="div" class="relative">
+                <div>
+                  <MenuButton class="inline-flex justify-center rounded-md border border-orange-500 shadow-sm px-4 py-2 bg-orange-600 text-white font-semibold hover:bg-orange-700 focus:outline-none">
+                    Export Data ▼
+                  </MenuButton>
+                </div>
+                <Transition enter="transition ease-out duration-100" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="transition ease-in duration-75" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
+                  <MenuItems class="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-zinc-900 ring-1 ring-orange-700 ring-opacity-70 focus:outline-none z-50">
+                    <div class="py-1">
+                      <MenuItem>
+                        <div class="px-4 py-2 text-sm text-orange-200 font-semibold">Selected Data</div>
+                      </MenuItem>
+                      <MenuItem>
+                        <button @click="downloadSelectedData('csv')" class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800">
+                          Export as CSV
+                        </button>
+                      </MenuItem>
+                      <MenuItem>
+                        <button @click="downloadSelectedData('xlsx')" class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800">
+                          Export as Excel
+                        </button>
+                      </MenuItem>
+                      <hr class="my-1 border-orange-700" />
+                      <MenuItem>
+                        <div class="px-4 py-2 text-sm text-orange-200 font-semibold">Full Report</div>
+                      </MenuItem>
+                      <MenuItem>
+                        <button @click="downloadFullDashboardReport" class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800">
+                          Download All Charts + Summary
+                        </button>
+                      </MenuItem>
+                    </div>
+                  </MenuItems>
+                </Transition>
+              </Menu>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- 🔹 Device Slicer -->
-      <div class="w-full max-w-4xl">
+      <section class="w-full max-w-xl pl-0 mb-10">
         <div class="flex items-center justify-between mb-2">
-          <label class="font-medium">Filter by Device(s)</label>
-          <span class="text-sm text-gray-500">{{ selected.length }} selected</span>
+          <label class="font-medium text-orange-300">Filter by Device(s)</label>
+          <span class="text-sm text-orange-200">{{ selected.length }} selected</span>
         </div>
+        <!-- Selected chips -->
         <div class="flex flex-wrap gap-2 mb-3">
-          <span v-for="d in selected" :key="d" class="bg-blue-100 text-blue-800 px-3 py-0.5 rounded-full flex items-center">
+          <span
+            v-for="d in selected"
+            :key="d"
+            class="bg-orange-900 text-orange-200 px-3 py-0.5 rounded-full flex items-center animate-fade-in"
+          >
             {{ d }}
-            <button @click="remove(d)" class="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none">×</button>
+            <button
+              @click="remove(d)"
+              class="ml-1 text-orange-400 hover:text-orange-200 focus:outline-none transition-colors duration-200"
+            >
+              ×
+            </button>
           </span>
-          <button v-if="selected.length" @click="clearAll" class="ml-auto text-sm text-red-600 hover:underline">
+          <button
+            v-if="selected.length"
+            @click="clearAll"
+            class="ml-auto text-sm text-orange-400 hover:underline"
+          >
             Clear All
           </button>
         </div>
-        <Combobox v-model="selected" multiple>
-          <div class="relative">
-            <ComboboxButton class="w-full border rounded p-2 bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-400">
-              Add more devices
-            </ComboboxButton>
-            <Transition enter="transition ease-out duration-100" enter-from="opacity-0" enter-to="opacity-100" leave="transition ease-in duration-75" leave-from="opacity-100" leave-to="opacity-0">
-              <ComboboxOptions v-if="options.length" class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-800 border rounded shadow max-h-60 overflow-auto">
-                <ComboboxOption :value="'__ALL__'" class="px-3 py-2 font-medium bg-gray-50 cursor-pointer hover:bg-gray-100" @click.prevent="toggleAll">
-                  {{ allSelected ? 'Deselect All' : 'Select All' }}
-                </ComboboxOption>
-                <ComboboxOption v-for="d in options" :key="d" :value="d" class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700">
+        <!-- Modal Picker Trigger -->
+        <button @click="showDeviceModal = true" class="w-full border border-orange-500 rounded p-2 bg-zinc-900 text-left text-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-colors duration-200">
+          Select Devices
+        </button>
+        <!-- Modal Picker -->
+        <transition name="fade">
+          <div v-if="showDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div class="bg-zinc-900 border border-orange-500 rounded-lg shadow-lg p-6 w-full max-w-lg relative">
+              <h2 class="text-lg font-bold mb-4 text-orange-400 font-roboto-slab">Select Devices</h2>
+              <input v-model="deviceSearch" type="text" placeholder="Search devices..." class="w-full mb-3 p-2 rounded border border-orange-500 bg-black text-orange-100 focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              <div class="flex justify-between mb-2">
+                <button @click="modalSelectAll" class="text-sm text-orange-400 hover:underline">Select All</button>
+                <button @click="modalClearAll" class="text-sm text-orange-400 hover:underline">Clear All</button>
+              </div>
+              <div class="max-h-60 overflow-y-auto mb-4">
+                <label v-for="d in filteredDevices" :key="d" class="flex items-center gap-2 py-1 cursor-pointer text-orange-100 hover:text-orange-400">
+                  <input type="checkbox" :value="d" v-model="modalSelected" class="accent-orange-500" />
                   {{ d }}
-                </ComboboxOption>
-              </ComboboxOptions>
-            </Transition>
+                </label>
+                <div v-if="!filteredDevices.length" class="text-orange-300 text-sm py-2">No devices found.</div>
+              </div>
+              <div class="flex justify-end gap-3 mt-4">
+                <button @click="showDeviceModal = false" class="px-4 py-2 rounded bg-zinc-800 text-orange-200 hover:bg-zinc-700">Cancel</button>
+                <button @click="confirmDeviceModal" class="px-4 py-2 rounded bg-orange-600 text-white font-semibold hover:bg-orange-700">Confirm</button>
+              </div>
+              <button @click="showDeviceModal = false" class="absolute top-2 right-2 text-orange-400 hover:text-orange-200 text-xl">×</button>
+            </div>
           </div>
-        </Combobox>
-      </div>
-    </div>
+        </transition>
+      </section>
 
-    <!-- 📊 Moisture Summary Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-      <MoistureCard v-for="(device, index) in selected" :key="device + '-latest'" :device="device" :title="`${device} Latest`" :value="latestMoisture[device] ?? 0" :change="round(latestMoisture[device] - forecastValues[device]?.[29])" :changeLabel="'vs forecast'" :status="statusTag(latestMoisture[device])" :isForecast="false" class="transition-shadow hover:shadow-lg" />
-      <MoistureCard v-for="(device, index) in selected" :key="device + '-forecast'" :device="device" :title="`${device} Forecast Day 30`" :value="forecastValues[device]?.[29] ?? 0" :change="round(forecastValues[device]?.[29] - latestMoisture[device])" :changeLabel="'vs current'" :status="statusTag(forecastValues[device]?.[29])" :isForecast="true" class="transition-shadow hover:shadow-lg" />
-    </div>
+      <!-- 📊 Moisture Summary Cards -->
+      <section class="mb-12">
+        <h2 class="text-xl font-semibold mb-4 text-orange-400">Moisture Summary</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+          <MoistureCard v-for="(device, index) in selected" :key="device + '-latest'" :device="device" :title="`${device} Latest`" :value="latestMoisture[device] ?? 0" :change="round(latestMoisture[device] - forecastValues[device]?.[29])" :changeLabel="'vs forecast'" :status="statusTag(latestMoisture[device])" :isForecast="false" class="transition-shadow hover:shadow-lg bg-zinc-900 border border-orange-500 text-orange-100 p-4" />
+          <MoistureCard v-for="(device, index) in selected" :key="device + '-forecast'" :device="device" :title="`${device} Forecast Day 30`" :value="forecastValues[device]?.[29] ?? 0" :change="round(forecastValues[device]?.[29] - latestMoisture[device])" :changeLabel="'vs current'" :status="statusTag(forecastValues[device]?.[29])" :isForecast="true" class="transition-shadow hover:shadow-lg bg-zinc-900 border border-orange-500 text-orange-100 p-4" />
+        </div>
+      </section>
 
-    <!-- 📈 Historical Charts -->
-    <section v-if="selected.length">
-      <h2 class="text-lg font-semibold mt-6 mb-2">Recent Soil Moisture Readings</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div v-for="device in selected" :key="device + '-chart'" class="bg-white dark:bg-zinc-800 p-4 rounded shadow-md hover:shadow-lg">
-          <div class="max-h-[320px] overflow-hidden">
-            <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device)" :options="getChartOptions()" class="h-48" />
+      <!-- 📈 Historical Charts -->
+      <section v-if="selected.length" class="mb-12">
+        <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Recent Soil Moisture Readings</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div v-for="(device, idx) in selected" :key="device + '-chart'" class="bg-zinc-900 p-8 rounded shadow-md hover:shadow-lg border border-orange-500 flex flex-col gap-2">
+            <div class="max-h-[320px] overflow-hidden">
+              <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-48" />
+            </div>
+            <div class="flex justify-between items-center mt-2 text-sm">
+              <span class="text-orange-200">Chart: Historical - {{ device }}</span>
+              <button @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)" class="text-orange-400 hover:underline">⬇ Download</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 📉 Forecast Chart -->
+      <section v-if="forecastChart" class="w-full mb-8">
+        <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Moisture Forecast (Next 30 Days)</h2>
+        <div class="bg-zinc-900 p-8 rounded shadow-md hover:shadow-lg border border-orange-500 w-full flex flex-col gap-2">
+          <div class="max-h-[340px] overflow-hidden">
+            <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-48 w-full" />
           </div>
           <div class="flex justify-between items-center mt-2 text-sm">
-            <span class="text-gray-500">Chart: Historical - {{ device }}</span>
-            <button @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)" class="text-blue-600 hover:underline">⬇ Download</button>
+            <span class="text-orange-200">Chart: Forecast (30 Days)</span>
+            <button @click="downloadChartImage('forecast-chart', 'forecast-30day.png')" class="text-orange-400 hover:underline">⬇ Download</button>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- 📉 Forecast Chart -->
-    <section v-if="forecastChart">
-      <h2 class="text-lg font-semibold mt-6 mb-2">Moisture Forecast (Next 30 Days)</h2>
-      <div class="bg-white dark:bg-zinc-800 p-4 rounded shadow-md hover:shadow-lg">
-        <div class="max-h-[340px] overflow-hidden">
-          <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-48" />
-        </div>
-        <div class="flex justify-between items-center mt-2 text-sm">
-          <span class="text-gray-500">Chart: Forecast (30 Days)</span>
-          <button @click="downloadChartImage('forecast-chart', 'forecast-30day.png')" class="text-blue-600 hover:underline">⬇ Download</button>
-        </div>
-      </div>
-    </section>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -149,6 +188,7 @@ import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
 import { Transition } from 'vue'
 import * as XLSX from 'xlsx-js-style'
 
+import Sidebar from '../components/Sidebar/index.vue'
 
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale, Filler)
 
@@ -170,6 +210,9 @@ const timeConfigs = {
 const selected = ref<string[]>([])
 const query = ref('')
 const rawData = ref<MoistureData[]>([])
+
+/* ── Loading State ───────────────────────────── */
+const isLoading = ref(true)
 
 /* ── Fetch Data ───────────────────────────── */
 watchEffect(async () => {
@@ -421,7 +464,16 @@ function forecast(data: MoistureData[]): number[] {
 }
 
 /* ── Chart Options ───────────────────────────── */
-function historicalChart(data: MoistureData[], label: string): ChartData<'line'> {
+const chartPalette = [
+  '#ff8800', // orange
+  '#1e90ff', // blue
+  '#ffd600', // yellow
+  '#e91e63', // pink
+  '#4caf50', // green
+  '#9c27b0', // purple
+]
+
+function historicalChart(data: MoistureData[], label: string, idx = 0): ChartData<'line'> {
   const sliced = data.slice(0, 100)
   const format: Intl.DateTimeFormatOptions = selectedRange.value === 'long'
     ? { weekday: 'short', month: 'short', day: 'numeric' }
@@ -432,9 +484,11 @@ function historicalChart(data: MoistureData[], label: string): ChartData<'line'>
     datasets: [{
       label,
       data: sliced.map(d => d.moisture).reverse(),
-      borderColor: 'rgb(54, 162, 235)',
-      backgroundColor: 'rgba(0,0,0,0)',
-      pointRadius: 0,
+      borderColor: chartPalette[idx % chartPalette.length],
+      backgroundColor: chartPalette[idx % chartPalette.length] + '33',
+      pointRadius: 3,
+      pointBackgroundColor: chartPalette[idx % chartPalette.length],
+      pointBorderColor: chartPalette[idx % chartPalette.length],
       tension: 0.3,
       fill: false
     }]
@@ -451,12 +505,18 @@ function getChartOptions(): ChartOptions<'line'> {
         max: moistureYAxisRange.value.max,
         ticks: {
           stepSize: 0.5,
+          color: '#ff8800',
+          font: { size: 16, weight: 'bold' },
           callback: value => `${Number(value).toFixed(1)}%`
         },
-        title: { display: true, text: 'Moisture (%)' }
+        title: { display: true, text: 'Moisture (%)', color: '#ff8800', font: { size: 16, weight: 'bold' } }
       },
       x: {
-        title: { display: true, text: 'Time' }
+        ticks: {
+          color: '#ff8800',
+          font: { size: 14, weight: 'bold' }
+        },
+        title: { display: true, text: 'Time', color: '#ff8800', font: { size: 14, weight: 'bold' } }
       }
     }
   }
@@ -469,10 +529,12 @@ const forecastChart = computed(() => {
   const datasets = selected.value.map((device, idx) => ({
     label: `${device} Forecast`,
     data: forecastValues.value[device],
-    borderColor: `hsl(${idx * 40}, 70%, 50%)`,
-    backgroundColor: `hsla(${idx * 40}, 70%, 50%, 0.1)`,
+    borderColor: chartPalette[idx % chartPalette.length],
+    backgroundColor: chartPalette[idx % chartPalette.length] + '33',
     fill: true,
-    pointRadius: 3
+    pointRadius: 3,
+    pointBackgroundColor: chartPalette[idx % chartPalette.length],
+    pointBorderColor: chartPalette[idx % chartPalette.length],
   }))
 
   const allVals = datasets.flatMap(ds => ds.data)
@@ -521,4 +583,77 @@ const moistureYAxisRange = computed(() => {
   }
 })
 
+// Modal picker state
+const showDeviceModal = ref(false)
+const deviceSearch = ref('')
+const modalSelected = ref<string[]>([])
+
+const filteredDevices = computed(() =>
+  options.value.filter(d => d.toLowerCase().includes(deviceSearch.value.toLowerCase()))
+)
+
+function modalSelectAll() {
+  modalSelected.value = [...options.value]
+}
+function modalClearAll() {
+  modalSelected.value = []
+}
+function confirmDeviceModal() {
+  selected.value = Array.from(new Set([...selected.value, ...modalSelected.value]))
+  showDeviceModal.value = false
+}
+
+watchEffect(() => {
+  // Keep modalSelected in sync with current selection when opening modal
+  if (showDeviceModal.value) {
+    modalSelected.value = [...selected.value]
+  }
+})
+
+// Set loading to false when all main data is loaded
+watchEffect(() => {
+  if (rawData.value.length || (Array.isArray(rawData.value) && rawData.value.length === 0)) {
+    isLoading.value = false
+  }
+})
+
 </script>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto+Slab:wght@700&display=swap');
+
+.font-inter {
+  font-family: 'Inter', Arial, sans-serif;
+}
+.font-roboto-slab {
+  font-family: 'Roboto Slab', serif;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Roboto Slab', serif;
+}
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+.loader {
+  border: 6px solid #222;
+  border-top: 6px solid #ff8800;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-fade-in {
+  animation: fade-in 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+</style>
