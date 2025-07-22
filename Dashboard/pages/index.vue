@@ -1,53 +1,53 @@
 <template>
   <div class="relative min-h-screen w-full">
+    <!-- Blurred background image with dark overlay -->
+    <img src="/home.jpg" alt="Background" class="fixed top-0 left-0 w-full h-full object-cover z-0 blur-md opacity-70 pointer-events-none select-none" onerror="this.style.display='none'" />
+    <div class="fixed top-0 left-0 w-full h-full bg-black/80 z-10 pointer-events-none" />
     <!-- Sidebar absolutely positioned, flush with all edges -->
-    <div class="fixed top-0 left-0 bottom-0 w-64 h-full z-30">
+    <div class="fixed top-0 left-0 bottom-0 w-64 h-full z-30 border-r-2 border-orange-800 shadow-xl">
       <Sidebar />
     </div>
-    <!-- Main content, margin-left for sidebar -->
-    <div class="ml-64 relative min-h-screen">
-      <div class="p-6 space-y-12 bg-black min-h-screen animate-fade-in">
-
-        <!-- 🔹 Average NPK Levels -->
-        <section>
-          <h2 class="text-xl font-bold mb-4 text-orange-400">Average NPK Levels</h2>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 transition-transform duration-300 hover:scale-105 hover:shadow-lg">
-              <h3 class="font-semibold text-sm text-orange-300">Nitrogen</h3>
-              <p class="text-2xl font-bold text-orange-400">{{ avg.nitrogen }}</p>
-            </div>
-            <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 transition-transform duration-300 hover:scale-105 hover:shadow-lg">
-              <h3 class="font-semibold text-sm text-orange-300">Phosphorus</h3>
-              <p class="text-2xl font-bold text-orange-400">{{ avg.phosphorus }}</p>
-            </div>
-            <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 transition-transform duration-300 hover:scale-105 hover:shadow-lg">
-              <h3 class="font-semibold text-sm text-orange-300">Potassium</h3>
-              <p class="text-2xl font-bold text-orange-400">{{ avg.potassium }}</p>
-            </div>
+    <!-- Main content, margin-left for sidebar, above overlay -->
+    <div class="ml-64 min-h-screen relative z-20 flex flex-col gap-10 px-6 md:px-12 py-8">
+      <!-- 🔹 Average NPK Levels -->
+      <section class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-6">
+        <h2 class="text-xl font-semibold mb-4 text-orange-400">Average NPK Levels</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center">
+            <h3 class="font-semibold text-base text-orange-300 mb-1">Nitrogen</h3>
+            <p class="text-3xl font-bold text-orange-400">{{ avg.nitrogen }}</p>
           </div>
-        </section>
-
-        <!-- 🔸 Soil Temp & Moisture -->
-        <section v-if="soilRaw && soilRaw.length">
-          <h2 class="text-xl font-bold mb-4 text-orange-400">Soil Temperature & Moisture</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 transition-transform duration-300 hover:scale-105 hover:shadow-lg">
-              <LineChart :chart-data="soilChartDataSingle('Soil Temp (°C)')" />
-            </div>
-            <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 transition-transform duration-300 hover:scale-105 hover:shadow-lg">
-              <LineChart :chart-data="soilChartDataSingle('Moisture (%)')" />
-            </div>
+          <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center">
+            <h3 class="font-semibold text-base text-orange-300 mb-1">Phosphorus</h3>
+            <p class="text-3xl font-bold text-orange-400">{{ avg.phosphorus }}</p>
           </div>
-        </section>
-
-        <!-- 🔸 CO₂ Forecast -->
-        <section v-if="co2ForecastData">
-          <h2 class="text-xl font-bold mb-4 text-orange-400">CO₂ Forecast</h2>
-          <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 transition-transform duration-300 hover:scale-105 hover:shadow-lg">
-            <LineChart :chart-data="co2ForecastData" />
+          <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center">
+            <h3 class="font-semibold text-base text-orange-300 mb-1">Potassium</h3>
+            <p class="text-3xl font-bold text-orange-400">{{ avg.potassium }}</p>
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
+
+      <!-- 🔸 Soil Temp & Moisture -->
+      <section v-if="soilRaw && soilRaw.length" class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-6">
+        <h2 class="text-xl font-semibold mb-4 text-orange-400">Soil Temperature & Moisture</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500">
+            <LineChart :chart-data="soilChartDataSingle('Soil Temp (°C)')" />
+          </div>
+          <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500">
+            <LineChart :chart-data="soilChartDataSingle('Moisture (%)')" />
+          </div>
+        </div>
+      </section>
+
+      <!-- 🔸 CO₂ Forecast -->
+      <section v-if="co2ForecastData" class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-6">
+        <h2 class="text-xl font-semibold mb-4 text-orange-400">CO₂ Forecast</h2>
+        <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500">
+          <LineChart :chart-data="co2ForecastData" />
+        </div>
+      </section>
     </div>
   </div>
 </template>
