@@ -1,182 +1,132 @@
 <template>
-  <div class="p-6 space-y-8">
-    <h1 class="text-2xl font-bold mb-4">Soil Moisture Forecast</h1>
+  <div class="p-6 space-y-8 font-sans">
+    <!-- 🔝 Header with Sticky Filter Bar -->
+    <div class="sticky top-0 z-40 bg-white dark:bg-zinc-900 shadow-md border-b pb-4">
+      <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+        <h1 class="text-3xl font-bold">Soil Moisture Forecast</h1>
+        <div class="flex flex-wrap gap-4 items-center justify-end w-full md:w-auto">
+          <div class="flex items-center gap-2">
+            <label class="font-medium">Time Range:</label>
+            <select v-model="selectedRange" class="border rounded p-2 text-sm">
+              <option value="short">Short (1 Day)</option>
+              <option value="medium">Medium (3 Days)</option>
+              <option value="long">Long (7 Days)</option>
+            </select>
+          </div>
+          <!-- 📁 Export Dropdown -->
+          <div class="relative inline-block text-left">
+            <Menu as="div" class="relative">
+              <div>
+                <MenuButton class="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-blue-600 text-white font-semibold hover:bg-blue-700 focus:outline-none">
+                  Export Data ▼
+                </MenuButton>
+              </div>
+              <Transition enter="transition ease-out duration-100" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="transition ease-in duration-75" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
+                <MenuItems class="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                  <div class="py-1">
+                    <MenuItem>
+                      <div class="px-4 py-2 text-sm text-gray-800 font-semibold">Selected Data</div>
+                    </MenuItem>
+                    <MenuItem>
+                      <button @click="downloadSelectedData('csv')" class="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Export as CSV
+                      </button>
+                    </MenuItem>
+                    <MenuItem>
+                      <button @click="downloadSelectedData('xlsx')" class="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Export as Excel
+                      </button>
+                    </MenuItem>
+                    <hr class="my-1 border-gray-200" />
+                    <MenuItem>
+                      <div class="px-4 py-2 text-sm text-gray-800 font-semibold">Full Report</div>
+                    </MenuItem>
+                    <MenuItem>
+                      <button @click="downloadFullDashboardReport" class="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Download All Charts + Summary
+                      </button>
+                    </MenuItem>
+                  </div>
+                </MenuItems>
+              </Transition>
+            </Menu>
+          </div>
+        </div>
+      </div>
 
-    <!-- 🔹 Device Slicer -->
-<div class="w-full max-w-xl">
-  <!-- Label + live‑count -->
-  <div class="flex items-center justify-between mb-2">
-    <label class="font-medium">Filter by Device(s)</label>
-    <span class="text-sm text-gray-500">{{ selected.length }} selected</span>
-  </div>
-
-  <!-- Selected chips -->
-  <div class="flex flex-wrap gap-2 mb-3">
-    <span
-      v-for="d in selected"
-      :key="d"
-      class="bg-blue-100 text-blue-800 px-3 py-0.5 rounded-full flex items-center"
-    >
-      {{ d }}
-      <button
-        @click="remove(d)"
-        class="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none"
-      >
-        ×
-      </button>
-    </span>
-
-    <button
-      v-if="selected.length"
-      @click="clearAll"
-      class="ml-auto text-sm text-red-600 hover:underline"
-    >
-      Clear All
-    </button>
-  </div>
-
-  <Combobox v-model="selected" multiple>
-    <div class="relative">
-      <!-- Button that toggles the dropdown -->
-      <ComboboxButton class="w-full border rounded p-2 bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-400">
-        Add more devices
-      </ComboboxButton>
-
-      <!-- Dropdown options -->
-      <Transition
-        enter="transition ease-out duration-100"
-        enter-from="opacity-0"
-        enter-to="opacity-100"
-        leave="transition ease-in duration-75"
-        leave-from="opacity-100"
-        leave-to="opacity-0"
-    >
-        <ComboboxOptions
-          v-if="options.length"
-          class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-800 border rounded shadow max-h-60 overflow-auto"
-      >
-          <!-- Select All / Deselect All toggle -->
-          <ComboboxOption
-            :value="'__ALL__'"
-            class="px-3 py-2 font-medium bg-gray-50 cursor-pointer hover:bg-gray-100"
-            @click.prevent="toggleAll"
-        >
-            {{ allSelected ? 'Deselect All' : 'Select All' }}
-          </ComboboxOption>
-
-          <!-- Devices -->
-          <ComboboxOption
-            v-for="d in options"
-            :key="d"
-            :value="d"
-            class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700"
-        >
+      <!-- 🔹 Device Slicer -->
+      <div class="w-full max-w-4xl">
+        <div class="flex items-center justify-between mb-2">
+          <label class="font-medium">Filter by Device(s)</label>
+          <span class="text-sm text-gray-500">{{ selected.length }} selected</span>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-3">
+          <span v-for="d in selected" :key="d" class="bg-blue-100 text-blue-800 px-3 py-0.5 rounded-full flex items-center">
             {{ d }}
-          </ComboboxOption>
-        </ComboboxOptions>
-      </Transition>
-    </div>
-  </Combobox>
-</div>
-
-<!-- Moisture Summary Cards: 4 columns on md+ -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-  <MoistureCard
-    v-for="(device, index) in selected"
-    :key="device + '-latest'"
-    :device="device"
-    :title="`${device} Latest`"
-    :value="latestMoisture[device] ?? 0"
-    :change="round(latestMoisture[device] - forecastValues[device]?.[29])"
-    :changeLabel="'vs forecast'"
-    :status="statusTag(latestMoisture[device])"
-    :isForecast="false"
-  />
-  <MoistureCard
-    v-for="(device, index) in selected"
-    :key="device + '-forecast'"
-    :device="device"
-    :title="`${device} Forecast Day 30`"
-    :value="forecastValues[device]?.[29] ?? 0"
-    :change="round(forecastValues[device]?.[29] - latestMoisture[device])"
-    :changeLabel="'vs current'"
-    :status="statusTag(forecastValues[device]?.[29])"
-    :isForecast="true"
-  />
-</div>
-
-
-
-
-  <!-- Time Range Selector -->
-    <div class="flex gap-3 items-center mb-4">
-      <label class="font-medium">Time Range:</label>
-      <select v-model="selectedRange" class="border rounded p-2 text-sm">
-        <option value="short">Short (1 Day)</option>
-        <option value="medium">Medium (3 Days)</option>
-        <option value="long">Long (7 Days)</option>
-      </select>
+            <button @click="remove(d)" class="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none">×</button>
+          </span>
+          <button v-if="selected.length" @click="clearAll" class="ml-auto text-sm text-red-600 hover:underline">
+            Clear All
+          </button>
+        </div>
+        <Combobox v-model="selected" multiple>
+          <div class="relative">
+            <ComboboxButton class="w-full border rounded p-2 bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-400">
+              Add more devices
+            </ComboboxButton>
+            <Transition enter="transition ease-out duration-100" enter-from="opacity-0" enter-to="opacity-100" leave="transition ease-in duration-75" leave-from="opacity-100" leave-to="opacity-0">
+              <ComboboxOptions v-if="options.length" class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-800 border rounded shadow max-h-60 overflow-auto">
+                <ComboboxOption :value="'__ALL__'" class="px-3 py-2 font-medium bg-gray-50 cursor-pointer hover:bg-gray-100" @click.prevent="toggleAll">
+                  {{ allSelected ? 'Deselect All' : 'Select All' }}
+                </ComboboxOption>
+                <ComboboxOption v-for="d in options" :key="d" :value="d" class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700">
+                  {{ d }}
+                </ComboboxOption>
+              </ComboboxOptions>
+            </Transition>
+          </div>
+        </Combobox>
+      </div>
     </div>
 
-  <!-- 🔽 Download CSV Button -->
-    <div class="mt-4">
-      <button
-        @click="downloadCSV"
-        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded"
-      >
-        Download Moisture Data as CSV
-      </button>
-    </div>
-    
-    <!-- Format Toggle + Button -->
-    <div class="flex items-center gap-3 mt-4">
-      <select v-model="downloadFormat" class="border rounded p-2 text-sm">
-        <option value="csv">CSV</option>
-        <option value="xlsx">Excel</option>
-      </select>
-      <button
-        @click="downloadSelectedData"
-        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded"
-      >
-        Download Selected Moisture Data
-      </button>
+    <!-- 📊 Moisture Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <MoistureCard v-for="(device, index) in selected" :key="device + '-latest'" :device="device" :title="`${device} Latest`" :value="latestMoisture[device] ?? 0" :change="round(latestMoisture[device] - forecastValues[device]?.[29])" :changeLabel="'vs forecast'" :status="statusTag(latestMoisture[device])" :isForecast="false" class="transition-shadow hover:shadow-lg" />
+      <MoistureCard v-for="(device, index) in selected" :key="device + '-forecast'" :device="device" :title="`${device} Forecast Day 30`" :value="forecastValues[device]?.[29] ?? 0" :change="round(forecastValues[device]?.[29] - latestMoisture[device])" :changeLabel="'vs current'" :status="statusTag(forecastValues[device]?.[29])" :isForecast="true" class="transition-shadow hover:shadow-lg" />
     </div>
 
-<!-- Full Report Button -->
-    <div class="mt-3">
-      <button
-        @click="downloadFullDashboardReport"
-        class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded"
-      >
-        Download Full Dashboard Report (Excel)
-      </button>
-    </div>
-
-    <!-- Historical Charts -->
+    <!-- 📈 Historical Charts -->
     <section v-if="selected.length">
-      <h2 class="text-lg font-semibold mb-2">Recent Soil Moisture Readings</h2>
+      <h2 class="text-lg font-semibold mt-6 mb-2">Recent Soil Moisture Readings</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div
-          v-for="device in selected"
-          :key="device + '-chart'"
-          class="bg-white dark:bg-zinc-800 p-4 rounded shadow"
-        >
-          <Line :data="historicalChart(deviceData[device] ?? [], device)" :options="getChartOptions()" class="h-60" />
+        <div v-for="device in selected" :key="device + '-chart'" class="bg-white dark:bg-zinc-800 p-4 rounded shadow-md hover:shadow-lg">
+          <div class="max-h-[320px] overflow-hidden">
+            <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device)" :options="getChartOptions()" class="h-48" />
+          </div>
+          <div class="flex justify-between items-center mt-2 text-sm">
+            <span class="text-gray-500">Chart: Historical - {{ device }}</span>
+            <button @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)" class="text-blue-600 hover:underline">⬇ Download</button>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- Forecast Chart -->
+    <!-- 📉 Forecast Chart -->
     <section v-if="forecastChart">
       <h2 class="text-lg font-semibold mt-6 mb-2">Moisture Forecast (Next 30 Days)</h2>
-      <div class="bg-white dark:bg-zinc-800 p-4 rounded shadow">
-        <Line :data="forecastChart" :options="forecastOptions" class="h-64" />
+      <div class="bg-white dark:bg-zinc-800 p-4 rounded shadow-md hover:shadow-lg">
+        <div class="max-h-[340px] overflow-hidden">
+          <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-48" />
+        </div>
+        <div class="flex justify-between items-center mt-2 text-sm">
+          <span class="text-gray-500">Chart: Forecast (30 Days)</span>
+          <button @click="downloadChartImage('forecast-chart', 'forecast-30day.png')" class="text-blue-600 hover:underline">⬇ Download</button>
+        </div>
       </div>
     </section>
   </div>
-
-
 </template>
+
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watchEffect } from 'vue'
@@ -195,7 +145,10 @@ import {
   ComboboxOptions,
   ComboboxOption,
 } from '@headlessui/vue'
-import * as XLSX from 'xlsx'
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
+import { Transition } from 'vue'
+import * as XLSX from 'xlsx-js-style'
+
 
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale, Filler)
 
@@ -229,114 +182,136 @@ watchEffect(async () => {
 })
 
 /* ── Download Data ───────────────────────────── */
+/* ── Download Data (CSV Only) ───────────────── */
 function downloadCSV() {
-  if (!rawData.value.length || !selected.value.length) return
+  if (!rawData.value.length || !selected.value.length) return;
 
-  const header = ['Timestamp', 'Device Name', 'Moisture (%)']
+  const header = ['Timestamp', 'Device Name', 'Moisture (%)'];
   const rows = rawData.value
     .filter(d => selected.value.includes(d.devicename))
     .map(d => [
       new Date(d.timestamp).toISOString(),
       d.devicename,
       d.moisture.toFixed(1)
-    ])
+    ]);
 
-  if (!rows.length) return
+  if (!rows.length) return;
 
   const csvContent =
     [header, ...rows]
       .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
+      .join('\n');
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.setAttribute('download', 'selected_moisture_data.csv')
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'selected_moisture_data.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
-const downloadFormat = ref<'csv' | 'xlsx'>('csv')
 
-function downloadSelectedData() {
-  if (!rawData.value.length || !selected.value.length) return
+/* ── Download Selected Data ───────────────── */
+function downloadSelectedData(format: 'csv' | 'xlsx') {
+  if (!rawData.value.length || !selected.value.length) return;
 
-  const filtered = rawData.value.filter(d => selected.value.includes(d.devicename))
-  if (!filtered.length) return
+  const filtered = rawData.value.filter(d => selected.value.includes(d.devicename));
+  if (!filtered.length) return;
 
   const rows = filtered.map(d => ({
     Timestamp: new Date(d.timestamp).toISOString(),
     'Device Name': d.devicename,
     'Moisture (%)': d.moisture.toFixed(1)
-  }))
+  }));
 
-  if (downloadFormat.value === 'csv') {
+  if (format === 'csv') {
     const csv = [
       Object.keys(rows[0]),
       ...rows.map(row => Object.values(row))
     ]
       .map(r => r.map(val => `"${val}"`).join(','))
-      .join('\n')
+      .join('\n');
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'selected_moisture_data.csv'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'selected_moisture_data.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   } else {
-    const worksheet = XLSX.utils.json_to_sheet(rows)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Selected Moisture Data')
-
-    XLSX.writeFile(workbook, 'selected_moisture_data.xlsx')
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Selected Moisture Data');
+    XLSX.writeFile(workbook, 'selected_moisture_data.xlsx');
   }
 }
 
-function downloadFullDashboardReport() {
-  const summary: any[] = []
-  for (const device of selected.value) {
-    const latest = latestMoisture.value[device]
-    const forecast = forecastValues.value[device]?.[29]
-    summary.push({
-      'Device': device,
-      'Latest Moisture (%)': latest,
-      'Forecast Day 30 Moisture (%)': forecast,
-      'Change (%)': round(forecast - latest)
-    })
-  }
+async function downloadFullDashboardReport(): Promise<void> {
+  const wb = XLSX.utils.book_new();
 
-  const allHistorical: any[] = []
+  /* 🟢 Summary Sheet */
+  const summary: any[] = selected.value.map(device => {
+    const latest = latestMoisture.value[device] ?? 0;
+    const forecast = forecastValues.value[device]?.[29] ?? 0;
+    return {
+      'Device': device,
+      'Latest Moisture (%)': latest.toFixed(1),
+      'Forecast Day 30 Moisture (%)': forecast.toFixed(1),
+      'Change (%)': (forecast - latest).toFixed(1)
+    };
+  });
+  const summarySheet = XLSX.utils.json_to_sheet(summary);
+  XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
+
+  /* 📈 Historical Data Sheet */
+  const historical: any[] = [];
   for (const device of selected.value) {
     for (const d of deviceData.value[device] ?? []) {
-      allHistorical.push({
+      historical.push({
         'Timestamp': new Date(d.timestamp).toISOString(),
         'Device': device,
         'Moisture (%)': d.moisture.toFixed(1)
-      })
+      });
     }
   }
+  const historicalSheet = XLSX.utils.json_to_sheet(historical);
+  XLSX.utils.book_append_sheet(wb, historicalSheet, 'Historical');
 
-  const forecastData: any[] = []
+  /* 🔮 Forecast Data Sheet */
+  const forecast: any[] = [];
   for (const device of selected.value) {
     forecastValues.value[device]?.forEach((val, i) => {
-      forecastData.push({
+      forecast.push({
         'Device': device,
         'Day': i + 1,
-        'Forecast Moisture (%)': val
-      })
-    })
+        'Forecast Moisture (%)': val.toFixed(1)
+      });
+    });
+  }
+  const forecastSheet = XLSX.utils.json_to_sheet(forecast);
+  XLSX.utils.book_append_sheet(wb, forecastSheet, 'Forecast');
+
+  /* 💾 Save Workbook */
+  XLSX.writeFile(wb, 'soil_moisture_dashboard_report.xlsx');
+}
+
+
+
+/* ── Image Download ───────────────────────────── */
+function downloadChartImage(canvasId: string, filename: string) {
+  const canvas = document.getElementById(canvasId) as HTMLCanvasElement
+  if (!canvas) {
+    alert('Chart not found.')
+    return
   }
 
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'Summary')
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allHistorical), 'Historical')
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(forecastData), 'Forecast')
-
-  XLSX.writeFile(wb, 'soil_moisture_dashboard_report.xlsx')
+  const link = document.createElement('a')
+  link.download = filename
+  link.href = canvas.toDataURL('image/png')
+  link.click()
 }
 
 /* ── Device Management ───────────────────────────── */
