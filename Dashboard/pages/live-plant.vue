@@ -108,11 +108,16 @@
                 <button @click="modalClearAll" class="text-sm text-orange-400 hover:underline">Clear All</button>
               </div>
               <div class="max-h-60 overflow-y-auto mb-4">
-                <label v-for="d in filteredDevices" :key="d" class="flex items-center gap-2 py-1 cursor-pointer text-orange-100 hover:text-orange-400">
-                  <input type="checkbox" :value="d" v-model="modalSelected" class="accent-orange-500" />
-                  {{ d }}
-                </label>
-                <div v-if="!filteredDevices.length" class="text-orange-300 text-sm py-2">No devices found.</div>
+                <div v-if="deviceNamesLoading" class="text-orange-300 text-sm py-2 flex items-center gap-2">
+                  <span class="loader"></span> Loading devices...
+                </div>
+                <template v-else>
+                  <label v-for="d in filteredDevices" :key="d" class="flex items-center gap-2 py-1 cursor-pointer text-orange-100 hover:text-orange-400">
+                    <input type="checkbox" :value="d" v-model="modalSelected" class="accent-orange-500" />
+                    {{ d }}
+                  </label>
+                  <div v-if="!filteredDevices.length" class="text-orange-300 text-sm py-2">No devices found.</div>
+                </template>
               </div>
               <div class="flex justify-end gap-3 mt-4">
                 <button @click="showDeviceModal = false" class="px-4 py-2 rounded bg-zinc-800 text-orange-200 hover:bg-zinc-700">Cancel</button>
@@ -136,7 +141,7 @@
       <!-- 📈 Historical Charts -->
       <section v-if="selected.length" class="mb-12">
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Recent Soil Moisture Readings</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 justify-start items-start w-full">
           <div v-for="(device, idx) in selected" :key="device + '-chart'" class="bg-zinc-900 p-8 rounded shadow-md hover:shadow-lg border border-orange-500 flex flex-col gap-2">
             <div class="max-h-[320px] overflow-hidden">
               <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-48" />
@@ -150,9 +155,9 @@
       </section>
 
       <!-- 📉 Forecast Chart -->
-      <section v-if="forecastChart" class="w-full mb-8">
+      <section v-if="forecastChart" class="w-full mb-8 flex flex-col items-start">
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Moisture Forecast (Next 30 Days)</h2>
-        <div class="bg-zinc-900 p-8 rounded shadow-md hover:shadow-lg border border-orange-500 w-full flex flex-col gap-2">
+        <div class="bg-zinc-900 p-8 rounded shadow-md hover:shadow-lg border border-orange-500 w-full flex flex-col gap-2 max-w-full">
           <div class="max-h-[340px] overflow-hidden">
             <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-48 w-full" />
           </div>
@@ -357,14 +362,23 @@ function downloadChartImage(canvasId: string, filename: string) {
   link.click()
 }
 
+// --- Device Names (faster device picker) ---
+const deviceNames = ref<string[]>([])
+const deviceNamesLoading = ref(true)
+
+onMounted(async () => {
+  try {
+    const res = await fetch('http://localhost:3001/device-names')
+    deviceNames.value = await res.json()
+  } catch (e) {
+    deviceNames.value = []
+  } finally {
+    deviceNamesLoading.value = false
+  }
+})
+
 /* ── Device Management ───────────────────────────── */
-const allDevices = computed(() =>
-  Array.from(new Set(
-    (rawData.value ?? [])
-      .map(r => r.devicename)
-      .filter(name => /plant pot/i.test(name))
-  )).sort()
-)
+const allDevices = computed(() => deviceNames.value)
 
 const options = computed(() =>
   allDevices.value.filter(d => !selected.value.includes(d))

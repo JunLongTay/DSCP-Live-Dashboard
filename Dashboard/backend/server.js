@@ -219,8 +219,6 @@ app.get('/moisture-all', async (req, res) => {
   }
 });
 
-
-
 app.get('/table-samples', async (req, res) => {
   try {
     const tablesResult = await pool.query(`
@@ -248,6 +246,18 @@ app.get('/table-samples', async (req, res) => {
     res.json(previews);
   } catch (err) {
     console.error('❌ /table-samples failed:', err);
+    res.status(500).send(err.message);
+  }
+});
+
+// 8) Device Names Only
+app.get('/device-names', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT devicename FROM devices ORDER BY devicename ASC');
+    const names = rows.map(r => r.devicename);
+    res.json(names);
+  } catch (err) {
+    console.error('❌ /device-names failed:', err);
     res.status(500).send(err.message);
   }
 });
