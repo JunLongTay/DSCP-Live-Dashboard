@@ -20,7 +20,7 @@
       <!-- 🔹 Device Slicer -->
       <section class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-4">
         <div class="flex items-center justify-between mb-2">
-          <h2 class="text-xl font-semibold text-orange-400">Soil Moisture Forecast</h2>
+          <h2 class="text-xl font-semibold text-orange-400">Dashboard Overview</h2>
           <Button
             @click="downloadFullReport"
             class=""
