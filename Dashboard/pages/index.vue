@@ -396,6 +396,17 @@ watchEffect(async () => {
   )
 })
 
+function movingCo2Avg(data: number[], windowSize: number): number[] {
+  const result = []
+  for (let i = 0; i < data.length; i++) {
+    const start = Math.max(0, i - windowSize + 1)
+    const slice = data.slice(start, i + 1)
+    const avg = slice.reduce((a, b) => a + b, 0) / slice.length
+    result.push(+avg.toFixed(2))
+  }
+  return result
+}
+
 const co2Data = computed<ChartData<'line'>>(() => {
   const src = [...co2Raw.value].sort(
     (a, b) => +new Date(a.timestamp) - +new Date(b.timestamp)
@@ -404,8 +415,11 @@ const co2Data = computed<ChartData<'line'>>(() => {
   const values = src.map(d => d.co2 ?? 0)
   const labels = src.map(d => {
     const dt = new Date(d.timestamp)
-    return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2,'0')}`
+    return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
   })
+
+  const smoothed = movingCo2Avg(values, 3)
+  const avgVal = +(values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)
 
   return {
     labels,
@@ -415,6 +429,22 @@ const co2Data = computed<ChartData<'line'>>(() => {
         data: values,
         borderColor: 'rgb(255,165,0)',
         pointRadius: 2,
+        fill: false,
+      },
+      {
+        label: `Smoothed CO₂ (${CO2_UNIT})`,
+        data: smoothed,
+        borderColor: 'deepskyblue',
+        borderDash: [4, 4],
+        pointRadius: 0,
+        fill: false,
+      },
+      {
+        label: `Avg CO₂ (${CO2_UNIT})`,
+        data: Array(values.length).fill(avgVal),
+        borderColor: 'gold',
+        borderDash: [2, 6],
+        pointRadius: 0,
         fill: false,
       }
     ]
