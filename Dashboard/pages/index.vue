@@ -29,7 +29,7 @@
           </Button>
         </div>
 
-        <div class="w-full max-w-xl">
+        <div class="w-full ">
           <div class="flex items-center justify-between mb-2">
             <label class="font-medium  text-orange-300">Filter by Device(s)</label>
             <span class="text-sm text-gray-400">{{ selected.length }} selected</span>
