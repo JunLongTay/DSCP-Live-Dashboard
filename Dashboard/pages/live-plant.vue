@@ -1,7 +1,7 @@
 <template>
   <div class="relative">
     <!-- Blurred plant background with black overlay -->
-    <img src="/plant.jpeg" alt="Plant background" class="fixed top-0 left-0 w-full h-full object-cover z-0 blur-md opacity-70 pointer-events-none select-none" />
+    <img src="public/home.jpg" alt="Plant background" class="fixed top-0 left-0 w-full h-full object-cover z-0 blur-md opacity-70 pointer-events-none select-none" />
     <div class="fixed top-0 left-0 w-full h-full bg-black/80 z-10 pointer-events-none" />
     <!-- Sidebar absolutely positioned, flush with all edges, above overlay -->
     <div class="fixed top-0 left-0 bottom-0 w-64 h-full z-30 border-r-2 border-orange-800 shadow-xl">
