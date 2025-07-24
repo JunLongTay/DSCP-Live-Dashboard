@@ -8,16 +8,17 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-primary text-primary-foreground shadow-xs hover:bg-primary/90',
+          'bg-orange-600 text-white border border-orange-500 shadow-xs hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-400',
         destructive:
-          'bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
+          'bg-orange-800 text-white border border-orange-900 shadow-xs hover:bg-orange-900 focus:outline-none focus:ring-2 focus:ring-orange-400',
         outline:
-          'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
+          'border border-orange-500 bg-transparent text-orange-500 hover:bg-orange-50 hover:text-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-400',
         secondary:
-          'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80',
+          'bg-orange-100 text-orange-700 border border-orange-300 shadow-xs hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-400',
         ghost:
-          'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
-        link: 'text-primary underline-offset-4 hover:underline',
+          'bg-transparent text-orange-500 hover:bg-orange-100 hover:text-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-400',
+        link:
+          'text-orange-600 underline-offset-4 hover:underline hover:text-orange-800 focus:outline-none focus:ring-2 focus:ring-orange-400',
       },
       size: {
         default: 'h-9 px-4 py-2 has-[>svg]:px-3',

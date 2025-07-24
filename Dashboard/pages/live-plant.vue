@@ -1,5 +1,5 @@
 <template>
-  <div class="relative min-h-screen w-full">
+  <div class="relative">
     <!-- Blurred plant background with black overlay -->
     <img src="/plant.jpeg" alt="Plant background" class="fixed top-0 left-0 w-full h-full object-cover z-0 blur-md opacity-70 pointer-events-none select-none" />
     <div class="fixed top-0 left-0 w-full h-full bg-black/80 z-10 pointer-events-none" />
@@ -8,9 +8,9 @@
       <Sidebar />
     </div>
     <!-- Main content, margin-left for sidebar, above overlay -->
-    <div class="ml-64 min-h-screen relative z-20 flex flex-col gap-10 px-6 md:px-12 py-8">
+    <div class="relative z-20 flex flex-col">
       <!-- 🔝 Header with Sticky Filter Bar -->
-      <div class="sticky top-0 z-40 bg-zinc-900 shadow-md border-b border-orange-700 pb-4 mb-8">
+      <div class="sticky z-40 shadow-md border-b border-orange-700 pb-4 mb-8 ">
         <div class="flex flex-wrap justify-between items-center gap-6 mb-4">
           <h1 class="text-3xl font-bold text-orange-400">Soil Moisture Forecast</h1>
           <div class="flex flex-wrap gap-4 items-center justify-end w-full md:w-auto">
@@ -26,8 +26,10 @@
             <div class="relative inline-block text-left">
               <Menu as="div" class="relative">
                 <div>
-                  <MenuButton class="inline-flex justify-center rounded-md border border-orange-500 shadow-sm px-4 py-2 bg-orange-600 text-white font-semibold hover:bg-orange-700 focus:outline-none">
-                    Export Data ▼
+                  <MenuButton as="template">
+                    <Button variant="default">
+                      Export Data ▼
+                    </Button>
                   </MenuButton>
                 </div>
                 <Transition enter="transition ease-out duration-100" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="transition ease-in duration-75" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
@@ -65,7 +67,7 @@
       </div>
 
       <!-- 🔹 Device Slicer -->
-      <section class="w-full max-w-xl pl-0 mb-10">
+      <section class="  pl-0 mb-10">
         <div class="flex items-center justify-between mb-2">
           <label class="font-medium text-orange-300">Filter by Device(s)</label>
           <span class="text-sm text-orange-200">{{ selected.length }} selected</span>
@@ -188,6 +190,7 @@ import { Transition } from 'vue'
 import * as XLSX from 'xlsx-js-style'
 
 import Sidebar from '../components/Sidebar/index.vue'
+import { Button } from '@/components/ui/button'
 
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale, Filler)
 

@@ -1,10 +1,10 @@
 <template>
   <!-- Sidebar container, only visible on large screens and up -->
   <aside
-    class="hidden lg:flex w-64 h-screen flex-col
-           pt-6 pl-4 text-xs font-normal
-           border-r border-orange-700
-           sidebar-bg animate-fade-in"
+    class="relative hidden lg:flex w-64 h-screen flex-col
+          pt-6 pl-4 text-xs font-normal
+          border-r border-orange-700
+          sidebar-bg animate-fade-in"
   >
     <!-- Logo.png at the very top -->
     <div class="flex flex-col items-center mb-2">
@@ -44,7 +44,7 @@
     <footer class="mt-auto px-4 py-3 text-xs text-orange-700 border-t border-orange-900 flex flex-col gap-2 items-center">
       <span>v1.0.0</span>
       <NuxtLink to="/about" class="hover:underline text-orange-500">Help / About</NuxtLink>
-      <img src="/logo.webp" alt="Cute Plant Bot Logo" class="w-16 h-16 object-contain mt-2" />
+      <img src="/logo.webp" alt="Cute Plant Bot Logo" class="w-16 h-16 mt-2" />
     </footer>
   </aside>
 </template>
@@ -77,7 +77,6 @@ const items: Item[] = [
 /* Subtle sidebar background gradient and pattern */
 .sidebar-bg {
   background: linear-gradient(135deg, #181818 80%, #ff88001a 100%);
-  position: relative;
 }
 .sidebar-bg::before {
   content: '';
