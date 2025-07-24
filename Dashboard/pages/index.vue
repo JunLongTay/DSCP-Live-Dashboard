@@ -1,5 +1,5 @@
 <template>
-  <div class="relative min-h-screen w-full">
+  <div class="relative min-h-screen">
     <!-- BG + overlay -->
     <img
       src="/home.jpg"
@@ -15,23 +15,23 @@
     </div>
 
     <!-- Main -->
-    <div class="ml-64 min-h-screen relative z-20 flex flex-col gap-10 px-6 md:px-12 py-8">
+    <div class="min-h-screen relative z-20 flex flex-col gap-10 px-6 md:px-12 py-8">
 
       <!-- 🔹 Device Slicer -->
       <section class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-4">
         <div class="flex items-center justify-between mb-2">
           <h2 class="text-xl font-semibold text-orange-400">Soil Moisture Forecast</h2>
-          <button
+          <Button
             @click="downloadFullReport"
-            class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-semibold"
+            class=""
           >
             Download All Charts + Summary
-          </button>
+          </Button>
         </div>
 
         <div class="w-full max-w-xl">
           <div class="flex items-center justify-between mb-2">
-            <label class="font-medium">Filter by Device(s)</label>
+            <label class="font-medium  text-orange-300">Filter by Device(s)</label>
             <span class="text-sm text-gray-400">{{ selected.length }} selected</span>
           </div>
 
@@ -43,21 +43,23 @@
               class="bg-blue-100 text-blue-800 px-3 py-0.5 rounded-full flex items-center"
             >
               {{ d }}
-              <button
+              <Button
                 @click="remove(d)"
-                class="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none"
+                variant="ghost"
+                class="ml-1"
               >
                 ×
-              </button>
+              </Button>
             </span>
 
-            <button
+            <Button
               v-if="selected.length"
               @click="clearAll"
-              class="ml-auto text-sm text-red-500 hover:underline"
+              variant="destructive"
+              class="ml-auto text-sm"
             >
               Clear All
-            </button>
+            </Button>
           </div>
 
           <!-- Combobox -->
@@ -145,13 +147,13 @@
         <h2 class="text-xl font-semibold mb-4 text-orange-400">Soil Temperature</h2>
 
         <div class="flex gap-4 mb-4">
-          <button @click="downloadSoilChart('Soil Temp (°C)')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded">
+          <Button @click="downloadSoilChart('Soil Temp (°C)')" variant="secondary">
             Download Soil Temp CSV
-          </button>
+          </Button>
 
-          <button @click="downloadChartImage('soilTempChart')" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded">
+          <Button @click="downloadChartImage('soilTempChart')" variant="default">
             Download Soil Temp Chart as Image
-          </button>
+          </Button>
         </div>
 
         <!-- Make sure this container stretches -->
@@ -172,13 +174,13 @@
       >
         <h2 class="text-xl font-semibold mb-4 text-orange-400">CO₂ Forecast</h2>
 
-        <button @click="downloadCO2Chart" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded mb-4">
+        <Button @click="downloadCO2Chart" variant="secondary" class="mb-4">
           Download CO₂ CSV
-        </button>
+        </Button>
         
-        <button @click="downloadChartImage('co2Chart')" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded">
+        <Button @click="downloadChartImage('co2Chart')" variant="default">
           Download CO₂ Chart as Image
-        </button>
+        </Button>
 
         <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500">
           <LineChart :chart-data="co2ForecastData" :chart-options="co2Options" ref="co2Chart"/>
@@ -201,6 +203,7 @@ import {
 import { ref, computed } from 'vue'
 import type { ChartData, ChartOptions } from 'chart.js'
 import 'chartjs-adapter-date-fns'
+import { Button } from '@/components/ui/button'
 
 /* ── Types ───────────────────────── */
 interface NPKReading { timestamp: string; nitrogen: number | null; phosphorus: number | null; potassium: number | null }
