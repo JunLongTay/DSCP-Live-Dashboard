@@ -200,7 +200,7 @@ import {
   ComboboxOptions,
   ComboboxOption,
 } from '@headlessui/vue'
-import { ref, computed } from 'vue'
+import { ref, computed, watchEffect } from 'vue'
 import type { ChartData, ChartOptions } from 'chart.js'
 import 'chartjs-adapter-date-fns'
 import { Button } from '@/components/ui/button'
@@ -237,11 +237,17 @@ function statusClass(status: string) {
 }
 
 /* ── NPK fetch/avg ───────────────── */
-const npkData = await $fetch<NPKReading[]>('http://localhost:3001/compost-npk')
+const npkData = ref<NPKReading[]>([])
+
+watchEffect(async () => {
+  const data = await $fetch<NPKReading[]>('http://localhost:3001/compost-npk')
+  npkData.value = data
+})
+
 const avg = computed(() => {
-  if (!npkData.length) return { nitrogen: '-', phosphorus: '-', potassium: '-' }
+  if (!npkData.value.length) return { nitrogen: '-', phosphorus: '-', potassium: '-' }
   const avgField = (f: keyof NPKReading) => (
-    npkData.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / npkData.length
+    npkData.value.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / npkData.value.length
   ).toFixed(1)
   return { nitrogen: avgField('nitrogen'), phosphorus: avgField('phosphorus'), potassium: avgField('potassium') }
 })
@@ -250,7 +256,13 @@ const avg = computed(() => {
 const TEMP_RANGE  = { low: 25, high: 32 }
 
 /* ── Soil charts ─────────────────── */
-const soilRaw = await $fetch<SoilReading[]>('http://localhost:3001/soil-temp-co2')
+const soilRaw = ref<SoilReading[]>([])
+
+watchEffect(async () => {
+  // If you want to react to a filter, add it here (e.g., selected devices)
+  const data = await $fetch<SoilReading[]>('http://localhost:3001/soil-temp-co2')
+  soilRaw.value = data
+})
 
 function movingAvg(values: (number | null)[], window = 5): (number | null)[] {
   const out: (number | null)[] = []
@@ -266,7 +278,7 @@ function cleanZeros(arr: number[], minValid = 1): (number | null)[] {
 }
 
 function soilChartDataSingle(label: string): ChartData<'line'> {
-  const src = [...soilRaw].sort((a,b) => +new Date(a.timestamp) - +new Date(b.timestamp))
+  const src = [...soilRaw.value].sort((a,b) => +new Date(a.timestamp) - +new Date(b.timestamp))
 
   const labels = src.map(r => new Date(r.timestamp))
   const temps  = src.map(d => d.soil_temp ?? 0)
@@ -330,10 +342,14 @@ const soilOptions: ChartOptions<'line'> = {
 /* ── CO₂ Forecast ─────────────────── */
 const CO2_UNIT = 'ppm'
 const FORECAST_RATIO = 0.25
-const co2Raw = await $fetch<CO2Reading[]>('http://localhost:3001/soil-temp-co2')
+const co2Raw = ref<CO2Reading[]>([])
+watchEffect(async () => {
+  const data = await $fetch<CO2Reading[]>('http://localhost:3001/soil-temp-co2')
+  co2Raw.value = data
+})
 
 const co2ForecastData = computed<ChartData<'line'>>(() => {
-  const src = [...co2Raw].sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp))
+  const src = [...co2Raw.value].sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp))
   const pastVals   = src.map(d => d.co2 ?? 0)
   const pastLabels = src.map(d => new Date(d.timestamp)) // Use Date objects
 
