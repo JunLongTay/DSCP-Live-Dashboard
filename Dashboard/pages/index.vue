@@ -240,8 +240,11 @@ function statusClass(status: string) {
 const npkData = ref<NPKReading[]>([])
 
 watchEffect(async () => {
-  const data = await $fetch<NPKReading[]>('http://localhost:3001/compost-npk')
-  npkData.value = data
+  const bucket = 60    // minutes per bucket
+  const window = 1440  // minutes back (24 hrs)
+
+  const url = `http://localhost:3001/compost-npk?bucket_min=${bucket}&window_min=${window}`
+  npkData.value = await $fetch<NPKReading[]>(url)
 })
 
 const avg = computed(() => {
@@ -259,15 +262,19 @@ const TEMP_RANGE  = { low: 25, high: 32 }
 const soilRaw = ref<SoilReading[]>([])
 
 watchEffect(async () => {
-  // If you want to react to a filter, add it here (e.g., selected devices)
-  const data = await $fetch<SoilReading[]>('http://localhost:3001/soil-temp-co2')
-  soilRaw.value = data
+  const bucket = 60    // 1‑hour buckets
+  const window = 1440  // last 1440 minutes = 24 hours
+
+  const url = `http://localhost:3001/soil-temp-co2?bucket_min=${bucket}&window_min=${window}`
+  soilRaw.value = await $fetch<SoilReading[]>(url)
 })
 
 function movingAvg(values: (number | null)[], window = 5): (number | null)[] {
   const out: (number | null)[] = []
   for (let i = 0; i < values.length; i++) {
-    const slice = values.slice(Math.max(0, i - window + 1), i + 1).filter(v => v != null) as number[]
+    const slice = values
+      .slice(Math.max(0, i - window + 1), i + 1)
+      .filter(v => v != null) as number[]
     out.push(slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : null)
   }
   return out
@@ -278,25 +285,54 @@ function cleanZeros(arr: number[], minValid = 1): (number | null)[] {
 }
 
 function soilChartDataSingle(label: string): ChartData<'line'> {
-  const src = [...soilRaw.value].sort((a,b) => +new Date(a.timestamp) - +new Date(b.timestamp))
+  const src = [...soilRaw.value].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  )
 
-  const labels = src.map(r => new Date(r.timestamp))
-  const temps  = src.map(d => d.soil_temp ?? 0)
+  // 1) turn each ISO timestamp into "H:mm"
+  const dates  = src.map(r => new Date(r.timestamp))
+  const labels = dates.map(dt =>
+    `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
+  )
 
-  const isTemp = label === 'Soil Temp (°C)'
-
+  // 2) extract and clean
+  const temps    = src.map(d => d.soil_temp ?? 0)
   const cleaned  = cleanZeros(temps)
   const smoothed = movingAvg(cleaned, 5)
   const valid    = cleaned.filter(v => v != null) as number[]
-  const avgVal   = valid.length ? Math.round(valid.reduce((a,b) => a + b, 0) / valid.length) : 0
+  const avgVal   = valid.length
+    ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length)
+    : 0
 
   return {
     labels,
     datasets: [
-      { label, data: cleaned, borderColor: 'rgb(255,165,0)', pointRadius: 2, spanGaps: true, fill: false },
-      { label: `Smoothed ${label}`, data: smoothed, borderColor: 'rgb(0,181,255)', borderDash: [6,6], pointRadius: 0, spanGaps: true, fill: false },
-      { label: `Avg ${label}`, data: Array(labels.length).fill(avgVal), borderColor: 'rgb(0,153,255)', borderDash: [4,4], pointRadius: 0, fill: false }
-    ]
+      {
+        label,
+        data: cleaned,
+        borderColor: 'rgb(255,165,0)',
+        pointRadius: 2,
+        spanGaps: true,
+        fill: false,
+      },
+      {
+        label: `Smoothed ${label}`,
+        data: smoothed,
+        borderColor: 'rgb(0,181,255)',
+        borderDash: [6, 6],
+        pointRadius: 0,
+        spanGaps: true,
+        fill: false,
+      },
+      {
+        label: `Avg ${label}`,
+        data: Array(labels.length).fill(avgVal),
+        borderColor: 'rgb(0,153,255)',
+        borderDash: [4, 4],
+        pointRadius: 0,
+        fill: false,
+      },
+    ],
   }
 }
 
@@ -305,91 +341,134 @@ const soilOptions: ChartOptions<'line'> = {
   maintainAspectRatio: false,
   scales: {
     x: {
-      type: 'time',
-      time: { unit: 'hour', displayFormats: { hour: 'h:mm aa' } },
+      type: 'category',      // now using string categories
       ticks: {
         maxRotation: 0,
         autoSkip: true,
         maxTicksLimit: 12,
-        callback(value) {
-          const date = new Date(value as number)
-          return date.getMinutes() === 0
-            ? date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-            : ''
-        }
-      }
-    }
+      },
+    },
+    y: {
+      // your y‑axis settings…
+    },
   },
   plugins: {
     decimation: { enabled: true, algorithm: 'lttb', samples: 60 },
     tooltip: {
       callbacks: {
         afterBody(items) {
-          const item = items?.[0]; if (!item) return ''
+          const item = items?.[0]
+          if (!item) return ''
           const lbl = String(item.dataset?.label ?? '')
-          const v   = item.parsed?.y; if (v == null) return ''
+          const v = item.parsed?.y
+          if (v == null) return ''
           const isTemp = lbl.includes('Temp')
-          const range = TEMP_RANGE;
+          const range = TEMP_RANGE
           if (v < range.low)  return isTemp ? 'Below ideal range' : 'Too dry'
           if (v > range.high) return isTemp ? 'Above ideal range' : 'Too wet'
           return isTemp ? 'Within ideal range' : 'Healthy moisture'
-        }
-      }
-    }
-  }
+        },
+      },
+    },
+  },
 }
 
 /* ── CO₂ Forecast ─────────────────── */
 const CO2_UNIT = 'ppm'
 const FORECAST_RATIO = 0.25
 const co2Raw = ref<CO2Reading[]>([])
+const bucket = 60    // minutes per bucket
+const window = 1440  // minutes back (24 hrs)
+
 watchEffect(async () => {
-  const data = await $fetch<CO2Reading[]>('http://localhost:3001/soil-temp-co2')
-  co2Raw.value = data
+  const qs = new URLSearchParams({
+    bucket_min: bucket.toString(),
+    window_min: window.toString(),
+  }).toString()
+
+  // now you get one averaged co2 point per hour for the past day
+  co2Raw.value = await $fetch<CO2Reading[]>(
+    `http://localhost:3001/soil-temp-co2?${qs}`
+  )
 })
 
 const co2ForecastData = computed<ChartData<'line'>>(() => {
-  const src = [...co2Raw.value].sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp))
-  const pastVals   = src.map(d => d.co2 ?? 0)
-  const pastLabels = src.map(d => new Date(d.timestamp)) // Use Date objects
+  // 1. Sort and extract raw values
+  const src = [...co2Raw.value]
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+  
+  const pastVals = src.map(d => d.co2 ?? 0)
+  const pastDates = src.map(d => new Date(d.timestamp))    // <–– keep real Date objects
+  const pastLabels = pastDates.map(dt =>
+    `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`  // format "H:mm"
+  )
 
   const n = pastVals.length
-  if (!n) return { labels: [], datasets: [] }
+  if (n === 0) {
+    return { labels: [], datasets: [] }
+  }
 
-  // Linear regression on index
-  const x     = [...Array(n).keys()]
+  // 2. Linear regression on index
+  const x = pastVals.map((_, i) => i)
   const sumX  = x.reduce((a, b) => a + b, 0)
   const sumY  = pastVals.reduce((a, b) => a + b, 0)
-  const sumXY = x.reduce((s, xi, i) => s + xi * pastVals[i], 0)
+  const sumXY = x.reduce((s, xi) => s + xi * pastVals[x.indexOf(xi)], 0)
   const sumX2 = x.reduce((s, xi) => s + xi * xi, 0)
 
   const m = (n * sumXY - sumX * sumY) / ((n * sumX2 - sumX ** 2) || 1)
   const b = (sumY - m * sumX) / (n || 1)
 
-  // Use actual time delta for forecast
+  // 3. Forecast using real time deltas
   const fCount = Math.max(3, Math.round(n * FORECAST_RATIO))
-  const lastDate = pastLabels[n - 1]
-  const prevDate = n > 1 ? pastLabels[n - 2] : new Date(lastDate.getTime() - 60_000)
+  const lastDate = pastDates[n - 1]
+  const prevDate = n > 1
+    ? pastDates[n - 2]
+    : new Date(lastDate.getTime() - 60_000)
   const deltaMs = Math.max(1, lastDate.getTime() - prevDate.getTime())
 
-  const forecastVals   = Array.from({ length: fCount }, (_, i) => Math.round(m * (n + i) + b))
-  const forecastLabels = Array.from({ length: fCount }, (_, i) =>
+  const forecastVals = Array.from({ length: fCount }, (_, i) =>
+    Math.round(m * (n + i) + b)
+  )
+  const forecastDates = Array.from({ length: fCount }, (_, i) =>
     new Date(lastDate.getTime() + deltaMs * (i + 1))
   )
+  const forecastLabels = forecastDates.map(dt =>
+    `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
+  )
 
+  // 4. Combine
   const labels = [...pastLabels, ...forecastLabels]
   const avgVal = Math.round(sumY / n)
 
   return {
     labels,
     datasets: [
-      { label: `CO₂ (Actual) (${CO2_UNIT})`,   data: pastVals, borderColor: 'rgb(255,165,0)', pointRadius: 2, fill: false },
-      { label: `CO₂ (Forecast) (${CO2_UNIT})`, data: [...Array(n).fill(null), ...forecastVals], borderColor: 'rgb(54,162,235)', borderDash: [6, 6], pointRadius: 2, fill: false },
-      { label: `Avg (${avgVal} ${CO2_UNIT})`,  data: Array(labels.length).fill(avgVal), borderColor: 'rgb(0,153,255)', borderDash: [4, 4], pointRadius: 0, fill: false }
-    ]
+      {
+        label: `CO₂ (Actual) (${CO2_UNIT})`,
+        data: pastVals,
+        borderColor: 'rgb(255,165,0)',
+        pointRadius: 2,
+        fill: false,
+      },
+      {
+        label: `CO₂ (Forecast) (${CO2_UNIT})`,
+        data: [...Array(n).fill(null), ...forecastVals],
+        borderColor: 'rgb(54,162,235)',
+        borderDash: [6, 6],
+        pointRadius: 2,
+        fill: false,
+      },
+      {
+        label: `Avg (${avgVal} ${CO2_UNIT})`,
+        data: Array(labels.length).fill(avgVal),
+        borderColor: 'rgb(0,153,255)',
+        borderDash: [4, 4],
+        pointRadius: 0,
+        fill: false,
+      },
+    ],
   }
-}
-)
+})
 
 const co2Options: ChartOptions<'line'> = {
   responsive: true,
@@ -452,7 +531,7 @@ function buildCO2Rows() {
   }))
 }
 function buildNPKRows() {
-  return npkData.map(r => ({
+  return npkData.value.map(r => ({
     timestamp: r.timestamp,
     nitrogen: r.nitrogen ?? '',
     phosphorus: r.phosphorus ?? '',

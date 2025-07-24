@@ -75,12 +75,15 @@ function getLimit(req, fallback = 100) {
 }
 
 // 📊 Endpoints
+// 📊 Bucketed Compost NPK
 app.get('/compost-npk', async (req, res) => {
-  const key = 'compost-npk-' + getLimit(req);
+  const bucketMin = Math.max(parseInt(req.query.bucket_min) || 5, 1); // e.g., 5-minute buckets
+  const windowMin = Math.max(parseInt(req.query.window_min) || 10080, bucketMin); // 10080 = 7 days
+  const key = `compost-npk-${bucketMin}-${windowMin}`;
   const cached = getCached(key);
   if (cached) return res.json(cached);
   try {
-    const { rows } = await pool.query(queries['compost-npk'], [getLimit(req)]);
+    const { rows } = await pool.query(queries['compost-npk-bucketed'], [bucketMin, windowMin]);
     setCache(key, rows);
     res.json(rows);
   } catch (err) {
@@ -89,12 +92,15 @@ app.get('/compost-npk', async (req, res) => {
   }
 });
 
+// 📊 Bucketed Soil Temp + CO2
 app.get('/soil-temp-co2', async (req, res) => {
-  const key = 'soil-temp-co2-' + getLimit(req);
+  const bucketMin = Math.max(parseInt(req.query.bucket_min) || 5, 1);
+  const windowMin = Math.max(parseInt(req.query.window_min) || 10080, bucketMin);
+  const key = `soil-temp-co2-${bucketMin}-${windowMin}`;
   const cached = getCached(key);
   if (cached) return res.json(cached);
   try {
-    const { rows } = await pool.query(queries['soil-temp-co2'], [getLimit(req)]);
+    const { rows } = await pool.query(queries['soil-temp-co2-bucketed'], [bucketMin, windowMin]);
     setCache(key, rows);
     res.json(rows);
   } catch (err) {
@@ -143,8 +149,8 @@ app.get('/health', (req, res) => {
 async function warmUpCache() {
   const endpoints = [
     'moisture-all?bucket_min=5&window_min=30',
-    'compost-npk?limit=1',
-    'soil-temp-co2?limit=1',
+    'compost-npk?limit=50',
+    'soil-temp-co2?limit=50',
   ];
   for (const route of endpoints) {
     const url = `http://localhost:3001/${route}`;
