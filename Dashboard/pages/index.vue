@@ -167,12 +167,12 @@
         </div>
       </section>
 
-      <!-- 🔸 CO₂ Forecast -->
+      <!-- 🔸 CO₂ Chart (Actual Only) -->
       <section
-        v-if="co2ForecastData"
+        v-if="co2Data"
         class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-6"
       >
-        <h2 class="text-xl font-semibold mb-4 text-orange-400">CO₂ Forecast</h2>
+        <h2 class="text-xl font-semibold mb-4 text-orange-400">CO₂ Levels</h2>
 
         <Button @click="downloadCO2Chart" variant="secondary" class="mb-4">
           Download CO₂ CSV
@@ -183,10 +183,14 @@
         </Button>
 
         <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500">
-          <LineChart :chart-data="co2ForecastData" :chart-options="co2Options" ref="co2Chart"/>
+          <!-- bind to co2Data instead of co2ForecastData -->
+          <LineChart
+            :chart-data="co2Data"
+            :chart-options="co2Options"
+            ref="co2Chart"
+          />
         </div>
-      </section>
-      
+      </section>    
     </div>
   </div>
 </template>
@@ -392,81 +396,28 @@ watchEffect(async () => {
   )
 })
 
-const co2ForecastData = computed<ChartData<'line'>>(() => {
-  // 1. Sort and extract raw values
-  const src = [...co2Raw.value]
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-  
-  const pastVals = src.map(d => d.co2 ?? 0)
-  const pastDates = src.map(d => new Date(d.timestamp))    // <–– keep real Date objects
-  const pastLabels = pastDates.map(dt =>
-    `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`  // format "H:mm"
+const co2Data = computed<ChartData<'line'>>(() => {
+  const src = [...co2Raw.value].sort(
+    (a, b) => +new Date(a.timestamp) - +new Date(b.timestamp)
   )
 
-  const n = pastVals.length
-  if (n === 0) {
-    return { labels: [], datasets: [] }
-  }
-
-  // 2. Linear regression on index
-  const x = pastVals.map((_, i) => i)
-  const sumX  = x.reduce((a, b) => a + b, 0)
-  const sumY  = pastVals.reduce((a, b) => a + b, 0)
-  const sumXY = x.reduce((s, xi) => s + xi * pastVals[x.indexOf(xi)], 0)
-  const sumX2 = x.reduce((s, xi) => s + xi * xi, 0)
-
-  const m = (n * sumXY - sumX * sumY) / ((n * sumX2 - sumX ** 2) || 1)
-  const b = (sumY - m * sumX) / (n || 1)
-
-  // 3. Forecast using real time deltas
-  const fCount = Math.max(3, Math.round(n * FORECAST_RATIO))
-  const lastDate = pastDates[n - 1]
-  const prevDate = n > 1
-    ? pastDates[n - 2]
-    : new Date(lastDate.getTime() - 60_000)
-  const deltaMs = Math.max(1, lastDate.getTime() - prevDate.getTime())
-
-  const forecastVals = Array.from({ length: fCount }, (_, i) =>
-    Math.round(m * (n + i) + b)
-  )
-  const forecastDates = Array.from({ length: fCount }, (_, i) =>
-    new Date(lastDate.getTime() + deltaMs * (i + 1))
-  )
-  const forecastLabels = forecastDates.map(dt =>
-    `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
-  )
-
-  // 4. Combine
-  const labels = [...pastLabels, ...forecastLabels]
-  const avgVal = Math.round(sumY / n)
+  const values = src.map(d => d.co2 ?? 0)
+  const labels = src.map(d => {
+    const dt = new Date(d.timestamp)
+    return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2,'0')}`
+  })
 
   return {
     labels,
     datasets: [
       {
         label: `CO₂ (Actual) (${CO2_UNIT})`,
-        data: pastVals,
+        data: values,
         borderColor: 'rgb(255,165,0)',
         pointRadius: 2,
         fill: false,
-      },
-      {
-        label: `CO₂ (Forecast) (${CO2_UNIT})`,
-        data: [...Array(n).fill(null), ...forecastVals],
-        borderColor: 'rgb(54,162,235)',
-        borderDash: [6, 6],
-        pointRadius: 2,
-        fill: false,
-      },
-      {
-        label: `Avg (${avgVal} ${CO2_UNIT})`,
-        data: Array(labels.length).fill(avgVal),
-        borderColor: 'rgb(0,153,255)',
-        borderDash: [4, 4],
-        pointRadius: 0,
-        fill: false,
-      },
-    ],
+      }
+    ]
   }
 })
 
@@ -474,13 +425,20 @@ const co2Options: ChartOptions<'line'> = {
   responsive: true,
   maintainAspectRatio: false,
   scales: {
-    x: { ticks: { autoSkip: true, maxTicksLimit: 8, maxRotation: 0 } },
-    y: { title: { display: true, text: `CO₂ (${CO2_UNIT})` } }
+    x: {
+      type: 'category',
+      ticks: { autoSkip: true, maxTicksLimit: 8, maxRotation: 0 }
+    },
+    y: {
+      title: { display: true, text: `CO₂ (${CO2_UNIT})` }
+    }
   },
   plugins: {
     tooltip: {
       callbacks: {
-        label(ctx) { return `${ctx.dataset.label}: ${ctx.parsed.y} ${CO2_UNIT}` }
+        label(ctx) {
+          return `${ctx.dataset.label}: ${ctx.parsed.y} ${CO2_UNIT}`
+        }
       }
     }
   }
@@ -518,7 +476,7 @@ function buildSoilRows(label: 'Soil Temp (°C)') {
 }
 
 function buildCO2Rows() {
-  const chart   = co2ForecastData.value
+  const chart   = co2Data.value
   const labels  = chart.labels ?? []
   const actual  = chart.datasets?.[0]?.data ?? []
   const forecast= chart.datasets?.[1]?.data ?? []
