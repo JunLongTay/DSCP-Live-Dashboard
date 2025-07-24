@@ -183,12 +183,6 @@ import {
   CategoryScale, LinearScale, Filler
 } from 'chart.js'
 import type { ChartData, ChartOptions } from 'chart.js'
-import {
-  Combobox,
-  ComboboxButton,
-  ComboboxOptions,
-  ComboboxOption,
-} from '@headlessui/vue'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
 import { Transition } from 'vue'
 import * as XLSX from 'xlsx-js-style'
@@ -230,36 +224,6 @@ watchEffect(async () => {
 })
 
 /* ── Download Data ───────────────────────────── */
-/* ── Download Data (CSV Only) ───────────────── */
-function downloadCSV() {
-  if (!rawData.value.length || !selected.value.length) return;
-
-  const header = ['Timestamp', 'Device Name', 'Moisture (%)'];
-  const rows = rawData.value
-    .filter(d => selected.value.includes(d.devicename))
-    .map(d => [
-      new Date(d.timestamp).toISOString(),
-      d.devicename,
-      d.moisture.toFixed(1)
-    ]);
-
-  if (!rows.length) return;
-
-  const csvContent =
-    [header, ...rows]
-      .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', 'selected_moisture_data.csv');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
 /* ── Download Selected Data ───────────────── */
 function downloadSelectedData(format: 'csv' | 'xlsx') {
   if (!rawData.value.length || !selected.value.length) return;

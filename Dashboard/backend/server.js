@@ -1,61 +1,87 @@
-console.log("📦 Server file started");
+require('dotenv').config();
+console.log('🔐 ENV Loaded:', {
+  PG_HOST: process.env.PG_HOST,
+  PG_PORT: process.env.PG_PORT,
+  PG_USER: process.env.PG_USER,
+});
 
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
+
+console.log("📦 Fully Optimized Server Starting...");
 
 const app = express();
 app.use(cors());
 app.use(compression());
 
+// 🛠️ Connection Pool with Enhanced Settings
 const pool = new Pool({
-  user: 'npds_2025',
-  host: 'db.tinkerthings.global',
-  database: 'sensor_data',
-  password: 'npds_2025_eh0atNiA5MVx2FYY3UnqVo5Vzv_0N9MRnSZ_3dkJgT_r2EIONEpFzV1o3IXHSFsjUX8hXT-9OgKqt8f512RPWJohKdM_pA-dAfimfXXOuke5C0Z9irOt4GrEV5R',
-  port: 6970,
+  user: process.env.PG_USER,
+  host: process.env.PG_HOST,
+  database: process.env.PG_DATABASE,
+  password: process.env.PG_PASSWORD,
+  port: parseInt(process.env.PG_PORT, 10),
+  max: 20,
+  idleTimeoutMillis: 30000, 
+  connectionTimeoutMillis: 10000,
+  maxUses: 7500,
+  statement_timeout: 600000,
+  query_timeout: 600000,
 });
 
-// Simple in-memory cache (expires in 30s)
+// 🚀 Enhanced In-Memory Cache
+const CACHE_MAX_SIZE = 1000;
+const CACHE_DEFAULT_TTL = 30000;
 const cache = new Map();
-function getCached(key, ttl = 30000) {
+
+function getCached(key, ttl = CACHE_DEFAULT_TTL) {
   const item = cache.get(key);
   if (item && Date.now() - item.timestamp < ttl) return item.data;
   return null;
 }
+
 function setCache(key, data) {
+  if (cache.size >= CACHE_MAX_SIZE) {
+    const oldestKey = cache.keys().next().value;
+    cache.delete(oldestKey);
+  }
   cache.set(key, { data, timestamp: Date.now() });
 }
 
-// Utility: Get limit from query or default
-function getLimit(req, fallback = 100) {
-  return Math.min(parseInt(req.query.limit) || fallback, 1000); // cap at 1000
+// 🧠 SQL Loader
+function loadQueries(filepath) {
+  const content = fs.readFileSync(filepath, 'utf8');
+  const queryMap = {};
+  const blocks = content.split('-- name: ').slice(1);
+  for (const block of blocks) {
+    const [nameLine, ...queryLines] = block.split('\n');
+    const name = nameLine.trim();
+    const query = queryLines.join('\n').trim();
+    queryMap[name] = query;
+  }
+  return queryMap;
 }
 
-// 1) Compost NPK
-app.get('/compost-npk', async (req, res) => {
-  const limit = getLimit(req);
-  const cacheKey = `/compost-npk-${limit}`;
-  const cached = getCached(cacheKey);
-  if (cached) return res.json(cached);
+const queries = loadQueries(path.join(__dirname, 'queries.sql'));
 
+// 🔄 Helpers
+function getLimit(req, fallback = 100) {
+  return Math.min(parseInt(req.query.limit) || fallback, 1000);
+}
+
+// 📊 Endpoints
+app.get('/compost-npk', async (req, res) => {
+  const key = 'compost-npk-' + getLimit(req);
+  const cached = getCached(key);
+  if (cached) return res.json(cached);
   try {
-    const { rows } = await pool.query(`
-      SELECT
-        dd.devicetimestamp AS timestamp,
-        MAX(CASE WHEN s.sensor = 'Soil Nitrogen'   THEN sd.value::float END) AS nitrogen,
-        MAX(CASE WHEN s.sensor = 'Soil Phosphorus' THEN sd.value::float END) AS phosphorus,
-        MAX(CASE WHEN s.sensor = 'Soil Potassium'  THEN sd.value::float END) AS potassium
-      FROM devicedata dd
-      JOIN sensordata sd  ON sd.devicedataid = dd.devicedataid
-      JOIN sensors s      ON sd.sensorid     = s.sensorid
-      WHERE s.sensor IN ('Soil Nitrogen', 'Soil Phosphorus', 'Soil Potassium')
-      GROUP BY dd.devicetimestamp
-      ORDER BY dd.devicetimestamp DESC
-      LIMIT $1
-    `, [limit]);
-    setCache(cacheKey, rows);
+    const { rows } = await pool.query(queries['compost-npk'], [getLimit(req)]);
+    setCache(key, rows);
     res.json(rows);
   } catch (err) {
     console.error('❌ /compost-npk failed:', err);
@@ -63,28 +89,13 @@ app.get('/compost-npk', async (req, res) => {
   }
 });
 
-// 2) Soil Temperature & CO₂
 app.get('/soil-temp-co2', async (req, res) => {
-  const limit = getLimit(req);
-  const cacheKey = `/soil-temp-co2-${limit}`;
-  const cached = getCached(cacheKey);
+  const key = 'soil-temp-co2-' + getLimit(req);
+  const cached = getCached(key);
   if (cached) return res.json(cached);
-
   try {
-    const { rows } = await pool.query(`
-      SELECT
-        dd.devicetimestamp AS timestamp,
-        MAX(CASE WHEN s.sensor = 'Soil Temperature' THEN sd.value::float END) AS soil_temp,
-        MAX(CASE WHEN s.sensor = 'CO2'              THEN sd.value::float END) AS co2
-      FROM devicedata dd
-      JOIN sensordata sd  ON sd.devicedataid = dd.devicedataid
-      JOIN sensors s      ON sd.sensorid     = s.sensorid
-      WHERE s.sensor IN ('Soil Temperature', 'CO2')
-      GROUP BY dd.devicetimestamp
-      ORDER BY dd.devicetimestamp DESC
-      LIMIT $1
-    `, [limit]);
-    setCache(cacheKey, rows);
+    const { rows } = await pool.query(queries['soil-temp-co2'], [getLimit(req)]);
+    setCache(key, rows);
     res.json(rows);
   } catch (err) {
     console.error('❌ /soil-temp-co2 failed:', err);
@@ -92,126 +103,15 @@ app.get('/soil-temp-co2', async (req, res) => {
   }
 });
 
-// 3) All raw sensor data (debug only)
-app.get('/all-sensor-data', async (req, res) => {
-  const limit = getLimit(req, 100);
-  try {
-    const { rows } = await pool.query(`
-      SELECT
-        dd.devicetimestamp AS timestamp,
-        s.sensor,
-        sd.value::float AS value
-      FROM devicedata dd
-      JOIN sensordata sd  ON sd.devicedataid = dd.devicedataid
-      JOIN sensors s      ON sd.sensorid     = s.sensorid
-      ORDER BY dd.devicetimestamp DESC
-      LIMIT $1
-    `, [limit]);
-    res.json(rows);
-  } catch (err) {
-    console.error('❌ /all-sensor-data failed:', err);
-    res.status(500).send(err.message);
-  }
-});
-
-// 4) Static Moisture Forecast
-app.get('/moisture-forecast', (req, res) => {
-  res.json([
-    { timestamp: '2025-07-07T13:00:00Z', moisture: 31 },
-    { timestamp: '2025-07-07T14:00:00Z', moisture: 30 },
-    { timestamp: '2025-07-07T15:00:00Z', moisture: 29 }
-  ]);
-});
-
-// 5) Soil Temperature by Device
-app.get('/soil-temp-by-device', async (req, res) => {
-  const limit = getLimit(req);
-  try {
-    const { rows } = await pool.query(`
-      SELECT
-        dd.devicetimestamp AS timestamp,
-        d.devicename,
-        MAX(CASE WHEN s.sensorid = 8 THEN sd.value::float END) AS soil_temp
-      FROM sensordata sd
-      JOIN devicedata dd
-        ON sd.devicedataid = dd.devicedataid
-        AND sd.parentdevicedbtimestamp = dd.dbtimestamp
-      JOIN devices d ON dd.deviceid = d.deviceid
-      JOIN sensors s ON sd.sensorid = s.sensorid
-      WHERE d.deviceid IN (48, 49, 50, 51, 52, 53, 54, 55)
-      GROUP BY dd.devicetimestamp, d.devicename
-      ORDER BY dd.devicetimestamp DESC
-      LIMIT $1
-    `, [limit]);
-    res.json(rows);
-  } catch (err) {
-    console.error('❌ /soil-temp-by-device failed:', err);
-    res.status(500).send(err.message);
-  }
-});
-
-// 6) Air Temperature from Device 56
-app.get('/air-temp', async (req, res) => {
-  const limit = getLimit(req);
-  try {
-    const { rows } = await pool.query(`
-      SELECT
-        dd.devicetimestamp AS timestamp,
-        d.devicename,
-        MAX(CASE WHEN s.sensorid = 2 THEN sd.value::float END) AS air_temp
-      FROM sensordata sd
-      JOIN devicedata dd
-        ON sd.devicedataid = dd.devicedataid
-        AND sd.parentdevicedbtimestamp = dd.dbtimestamp
-      JOIN devices d ON dd.deviceid = d.deviceid
-      JOIN sensors s ON sd.sensorid = s.sensorid
-      WHERE d.deviceid IN (56)
-      GROUP BY dd.devicetimestamp, d.devicename
-      ORDER BY dd.devicetimestamp DESC
-      LIMIT $1
-    `, [limit]);
-    res.json(rows);
-  } catch (err) {
-    console.error('❌ /air-temp failed:', err);
-    res.status(500).send(err.message);
-  }
-});
-
-// 7) Soil‑moisture endpoint with time‑bucketing
 app.get('/moisture-all', async (req, res) => {
   const bucketMin = Math.max(parseInt(req.query.bucket_min) || 2, 1);
   const windowMin = Math.max(parseInt(req.query.window_min) || 120, bucketMin);
-
-  const cacheKey = `/moisture-all-${bucketMin}-${windowMin}`;
-  const cached   = getCached(cacheKey);
-  if (cached) {
-    console.log('[moisture-all] cache hit', cached.length, 'rows');
-    return res.json(cached);
-  }
-
+  const key = `moisture-all-${bucketMin}-${windowMin}`;
+  const cached = getCached(key);
+  if (cached) return res.json(cached);
   try {
-    const { rows } = await pool.query(
-      `
-      /* average moisture into N‑minute buckets within the recent window */
-      SELECT
-        date_trunc('minute', dd.devicetimestamp)
-          - make_interval(mins := EXTRACT(MINUTE FROM dd.devicetimestamp)::int % $1)
-          AS timestamp,
-        d.devicename,
-        AVG(sd.value::float) AS moisture
-      FROM devicedata  dd
-      JOIN sensordata  sd ON sd.devicedataid = dd.devicedataid
-      JOIN sensors     s  ON sd.sensorid     = s.sensorid
-      JOIN devices     d  ON dd.deviceid     = d.deviceid
-      WHERE s.sensor = 'Soil Moisture'
-        AND dd.devicetimestamp >= NOW() - make_interval(mins := $2)
-      GROUP BY timestamp, d.devicename
-      ORDER BY timestamp DESC
-      `,
-      [bucketMin, windowMin]
-    );
-
-    setCache(cacheKey, rows);
+    const { rows } = await pool.query(queries['moisture-all'], [bucketMin, windowMin]);
+    setCache(key, rows);
     res.json(rows);
   } catch (err) {
     console.error('❌ /moisture-all failed:', err);
@@ -219,41 +119,9 @@ app.get('/moisture-all', async (req, res) => {
   }
 });
 
-app.get('/table-samples', async (req, res) => {
-  try {
-    const tablesResult = await pool.query(`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = 'public'
-        AND table_type = 'BASE TABLE'
-    `);
-
-    const previews = [];
-
-    for (const row of tablesResult.rows) {
-      const tableName = row.table_name;
-
-      try {
-        const dataResult = await pool.query(`SELECT * FROM "${tableName}" LIMIT 5`);
-        if (dataResult.rows.length > 0) {
-          previews.push({ table: tableName, rows: dataResult.rows });
-        }
-      } catch (err) {
-        console.warn(`⚠️ Skipping ${tableName}:`, err.message);
-      }
-    }
-
-    res.json(previews);
-  } catch (err) {
-    console.error('❌ /table-samples failed:', err);
-    res.status(500).send(err.message);
-  }
-});
-
-// 8) Device Names Only
 app.get('/device-names', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT devicename FROM devices ORDER BY devicename ASC');
+    const { rows } = await pool.query(queries['device-names']);
     const names = rows.map(r => r.devicename);
     res.json(names);
   } catch (err) {
@@ -262,5 +130,38 @@ app.get('/device-names', async (req, res) => {
   }
 });
 
-// Start server
-app.listen(3001, () => console.log('✅ Backend running at http://localhost:3001'));
+app.get('/health', (req, res) => {
+  res.json({
+    uptime: process.uptime(),
+    cacheSize: cache.size,
+    connections: pool.totalCount,
+    idleConnections: pool.idleCount,
+    waitingRequests: pool.waitingCount,
+  });
+});
+
+async function warmUpCache() {
+  const endpoints = [
+    'moisture-all?bucket_min=5&window_min=30',
+    'compost-npk?limit=1',
+    'soil-temp-co2?limit=1',
+  ];
+  for (const route of endpoints) {
+    const url = `http://localhost:3001/${route}`;
+    console.log(`⏳ Warming cache from ${url}`);
+    try {
+      await new Promise(r => setTimeout(r, 500));
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+      console.log(`🔥 Warmed ${route}: ${data.length} rows`);
+    } catch (err) {
+      console.error(`❌ Failed for ${route}: ${err.message}`);
+    }
+  }
+}
+
+app.listen(3001, () => {
+  console.log('✅ Fully Optimized backend running at http://localhost:3001');
+  warmUpCache();
+});
