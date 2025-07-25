@@ -210,9 +210,9 @@ import 'chartjs-adapter-date-fns'
 import { Button } from '@/components/ui/button'
 
 /* ── Types ───────────────────────── */
-interface NPKReading { timestamp: string; nitrogen: number | null; phosphorus: number | null; potassium: number | null }
-interface SoilReading { timestamp: string; soil_temp: number | null; device: string }
-interface CO2Reading   { timestamp: string; co2: number | null; device: string }
+interface NPKReading { timestamp: string; nitrogen: number | null; phosphorus: number | null; potassium: number | null; devicename: string }
+interface SoilReading { timestamp: string; soil_temp: number | null; devicename: string }
+interface CO2Reading   { timestamp: string; co2: number | null; devicename: string;  }
 
 /* ── State ───────────────────────── */
 const selected = ref<string[]>([])
@@ -251,10 +251,17 @@ watchEffect(async () => {
   npkData.value = await $fetch<NPKReading[]>(url)
 })
 
+const filteredNpkData = computed(() => {
+  if (!selected.value.length) return npkData.value
+  // npkData rows have devicename
+  return npkData.value.filter(row => selected.value.includes((row as any).devicename))
+})
+
 const avg = computed(() => {
-  if (!npkData.value.length) return { nitrogen: '-', phosphorus: '-', potassium: '-' }
+  const data = filteredNpkData.value
+  if (!data.length) return { nitrogen: '-', phosphorus: '-', potassium: '-' }
   const avgField = (f: keyof NPKReading) => (
-    npkData.value.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / npkData.value.length
+    data.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / data.length
   ).toFixed(1)
   return { nitrogen: avgField('nitrogen'), phosphorus: avgField('phosphorus'), potassium: avgField('potassium') }
 })
@@ -273,6 +280,13 @@ watchEffect(async () => {
   soilRaw.value = await $fetch<SoilReading[]>(url)
 })
 
+const filteredSoilRaw = computed<SoilReading[]>(() => {
+  if (!selected.value.length) return soilRaw.value;
+  return soilRaw.value.filter(row =>
+    selected.value.includes(row.devicename)
+  );
+});
+
 function movingAvg(values: (number | null)[], window = 5): (number | null)[] {
   const out: (number | null)[] = []
   for (let i = 0; i < values.length; i++) {
@@ -289,7 +303,7 @@ function cleanZeros(arr: number[], minValid = 1): (number | null)[] {
 }
 
 function soilChartDataSingle(label: string): ChartData<'line'> {
-  const src = [...soilRaw.value].sort(
+  const src = [...filteredSoilRaw.value].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   )
 
@@ -407,46 +421,29 @@ function movingCo2Avg(data: number[], windowSize: number): number[] {
   return result
 }
 
+const filteredCo2Raw = computed(() => {
+  if (!selected.value.length) return co2Raw.value
+  return co2Raw.value.filter(row => selected.value.includes(row.devicename))
+})
+
 const co2Data = computed<ChartData<'line'>>(() => {
-  const src = [...co2Raw.value].sort(
+  const src = [...filteredCo2Raw.value].sort(
     (a, b) => +new Date(a.timestamp) - +new Date(b.timestamp)
   )
-
   const values = src.map(d => d.co2 ?? 0)
   const labels = src.map(d => {
     const dt = new Date(d.timestamp)
     return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
   })
-
   const smoothed = movingCo2Avg(values, 3)
   const avgVal = +(values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)
 
   return {
     labels,
     datasets: [
-      {
-        label: `CO₂ (Actual) (${CO2_UNIT})`,
-        data: values,
-        borderColor: 'rgb(255,165,0)',
-        pointRadius: 2,
-        fill: false,
-      },
-      {
-        label: `Smoothed CO₂ (${CO2_UNIT})`,
-        data: smoothed,
-        borderColor: 'deepskyblue',
-        borderDash: [4, 4],
-        pointRadius: 0,
-        fill: false,
-      },
-      {
-        label: `Avg CO₂ (${CO2_UNIT})`,
-        data: Array(values.length).fill(avgVal),
-        borderColor: 'gold',
-        borderDash: [2, 6],
-        pointRadius: 0,
-        fill: false,
-      }
+      { label: `CO₂ (Actual) (${CO2_UNIT})`, data: values, borderColor: 'rgb(255,165,0)', pointRadius: 2, fill: false },
+      { label: `Smoothed CO₂ (${CO2_UNIT})`, data: smoothed, borderColor: 'deepskyblue', borderDash: [4, 4], pointRadius: 0, fill: false },
+      { label: `Avg CO₂ (${CO2_UNIT})`, data: Array(values.length).fill(avgVal), borderColor: 'gold', borderDash: [2, 6], pointRadius: 0, fill: false }
     ]
   }
 })
@@ -627,15 +624,16 @@ const co2Chart = ref<ChartComponentRef | null>(null)
 
 
 /* ── Device slicer ─────────────────── */
-const allDeviceNamesRaw = await $fetch<string[]>('http://localhost:3001/device-names')
-const allDeviceNames = allDeviceNamesRaw.filter(name => name.startsWith('NP'))
-
-const options = computed(() => allDeviceNames.filter(d => !selected.value.includes(d)))
-const allSelected = computed(() =>
-  allDeviceNames.length > 0 && selected.value.length === allDeviceNames.length
+const allDeviceNamesRaw = await $fetch<string[]>(
+  'http://localhost:3001/np-devices'
 )
 
-function toggleAll() { selected.value = allSelected.value ? [] : [...allDeviceNames] }
+const options = computed(() => allDeviceNamesRaw.filter(d => !selected.value.includes(d)))
+const allSelected = computed(() =>
+  allDeviceNamesRaw.length > 0 && selected.value.length === allDeviceNamesRaw.length
+)
+
+function toggleAll() { selected.value = allSelected.value ? [] : [...allDeviceNamesRaw] }
 function remove(dev: string) { selected.value = selected.value.filter(d => d !== dev) }
 function clearAll() { selected.value = [] }
 </script>

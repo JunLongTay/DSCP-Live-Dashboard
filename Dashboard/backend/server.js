@@ -136,6 +136,17 @@ app.get('/device-names', async (req, res) => {
   }
 });
 
+app.get('/np-devices', async (req, res) => {
+  try {
+    const { rows } = await pool.query(queries['np-devices']);
+    const names = rows.map(r => r.devicename);
+    res.json(names);
+  } catch (err) {
+    console.error('❌ /np-devices failed:', err);
+    res.status(500).send(err.message);
+  }
+});
+
 app.get('/health', (req, res) => {
   res.json({
     uptime: process.uptime(),
@@ -149,8 +160,8 @@ app.get('/health', (req, res) => {
 async function warmUpCache() {
   const endpoints = [
     'moisture-all?bucket_min=5&window_min=30',
-    'compost-npk?limit=50',
-    'soil-temp-co2?limit=50',
+    'compost-npk?bucket_min=60&window_min=1440',
+    'soil-temp-co2?bucket_min=60&window_min=1440',
   ];
   for (const route of endpoints) {
     const url = `http://localhost:3001/${route}`;
