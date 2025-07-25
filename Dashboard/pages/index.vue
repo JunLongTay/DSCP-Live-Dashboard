@@ -20,15 +20,15 @@
       <!-- 🔹 Device Slicer -->
       <!-- Dashboard Overview (no container) -->
       <div class="flex flex-col gap-4">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="text-2xl font-bold text-orange-400">Dashboard Overview</h2>
-          <Button
-            @click="downloadFullReport"
-            class="font-semibold text-base"
-          >
-            Download All Charts + Summary
-          </Button>
-        </div>
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-3xl font-bold text-orange-400" style="font-family: 'Montserrat', 'Arial', sans-serif;">Dashboard Overview</h2>
+        <Button
+          @click="downloadFullReport"
+          class="font-semibold text-base"
+        >
+          Download All Charts + Summary
+        </Button>
+      </div>
 
       <div class="w-full">
         <div class="flex items-center justify-between mb-2">
@@ -71,7 +71,7 @@
       <!-- 🔹 Average NPK Levels -->
       <h2 class="text-2xl font-bold mb-4 text-orange-400">Average NPK Levels</h2>
       <div v-if="selected.length" class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div v-for="card in avgPerDevice" :key="card.devicename" class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center">
+        <div v-for="card in avgPerDevice" :key="card.devicename" class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center transition-transform duration-200 hover:scale-105 hover:shadow-2xl">
           <h3 class="font-bold text-lg text-orange-300 mb-3">{{ card.devicename }}</h3>
           <div class="flex flex-col gap-3 w-full">
             <div class="flex items-center justify-between w-full">
@@ -113,8 +113,8 @@
 
 
       <!-- 🔸 Soil Temperature -->
-      <section class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-6 h-full">
-        <h2 class="text-2xl font-bold mb-4 text-orange-400">Soil Temperature</h2>
+      <section class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-8 h-full">
+        <h2 class="text-2xl font-bold mb-6 text-orange-400">Soil Temperature</h2>
 
         <!-- Chart download buttons removed; only per-chart download remains -->
 
@@ -146,9 +146,9 @@
       <!-- 🔸 CO₂ Chart (Actual Only) -->
       <section
         v-if="soilRaw && soilRaw.length"
-        class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-6"
+        class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-8"
       >
-        <h2 class="text-2xl font-bold mb-4 text-orange-400">CO₂ Levels</h2>
+        <h2 class="text-2xl font-bold mb-6 text-orange-400">CO₂ Levels</h2>
         <div v-if="selected.length" class="p-4 rounded shadow border border-orange-500">
           <LineChart
             :chart-data="co2Data"
