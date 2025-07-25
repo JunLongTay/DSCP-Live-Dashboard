@@ -116,24 +116,26 @@
       <section class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-6 h-full">
         <h2 class="text-2xl font-bold mb-4 text-orange-400">Soil Temperature</h2>
 
-        <div class="flex gap-4 mb-4">
-          <Button @click="downloadSoilChart('Soil Temp (°C)')" variant="secondary" class="font-semibold text-base">
-            Download Soil Temp CSV
-          </Button>
-
-          <Button @click="downloadChartImage('soilTempChart')" variant="default" class="font-semibold text-base">
-            Download Soil Temp Chart as Image
-          </Button>
-        </div>
+        <!-- Chart download buttons removed; only per-chart download remains -->
 
         <div v-if="selected.length" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div v-for="device in selected" :key="device" class="p-4 rounded shadow border border-orange-500">
+          <div v-for="(device, idx) in selected" :key="device" class="p-4 rounded shadow border border-orange-500">
             <LineChart
               :chart-data="soilChartDataSingleDevice(device, 'Soil Temp (°C)')"
               :chart-options="soilOptions"
               class="h-60"
+              :ref="el => setSoilTempChartRef(el, idx)"
             />
-            <div class="mt-2 text-center text-orange-400 font-semibold text-base">Chart: Soil Temp - {{ device }}</div>
+            <div class="mt-2 flex items-center justify-between w-full">
+              <div class="text-center text-orange-400 font-semibold text-base">Chart: Soil Temp - {{ device }}</div>
+              <button
+                @click="downloadSingleSoilChart(idx, device)"
+                class="flex items-center gap-2 px-2 py-1 rounded bg-zinc-900 border border-orange-500 text-orange-400 font-semibold hover:bg-orange-500 hover:text-white transition ml-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" /></svg>
+                Download
+              </button>
+            </div>
           </div>
         </div>
         <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
@@ -153,6 +155,15 @@
             :chart-options="co2Options"
             ref="co2Chart"
           />
+          <div class="mt-2 flex items-center justify-end w-full">
+            <button
+              @click="downloadChartImage('co2Chart')"
+              class="flex items-center gap-2 px-2 py-1 rounded bg-zinc-900 border border-orange-500 text-orange-400 font-semibold hover:bg-orange-500 hover:text-white transition"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" /></svg>
+              Download
+            </button>
+          </div>
         </div>
         <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
           Please select a device to get started.
@@ -171,7 +182,7 @@ import {
   ComboboxOptions,
   ComboboxOption,
 } from '@headlessui/vue'
-import { ref, computed, watchEffect } from 'vue'
+import { ref, computed, watchEffect, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { ChartData, ChartOptions } from 'chart.js'
 import 'chartjs-adapter-date-fns'
 import { Button } from '@/components/ui/button'
@@ -585,21 +596,45 @@ async function downloadFullReport() {
   downloadBlob('full_report.xlsx', wbout, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 }
 
-/* ── Chart Download Function ─────────────────── */
-function downloadChartImage(chartRef: string) {
-  let chartInstance = null
-  if (chartRef === 'soilTempChart') {
-    chartInstance = soilTempChart.value?.chartInstance
-  } else if (chartRef === 'co2Chart') {
-    chartInstance = co2Chart.value?.chartInstance
-  }
+/* ── Chart Download Functions ─────────────────── */
+const soilTempChartRefs = ref<any[]>([])
 
-  if (chartInstance) {
-    const imageUrl = chartInstance.toBase64Image()
+function setSoilTempChartRef(el: any, idx: number) {
+  if (!el) return
+  soilTempChartRefs.value[idx] = el
+}
+
+function downloadSingleSoilChart(idx: number, device: string) {
+  const chartComp = soilTempChartRefs.value[idx]
+  const chartInstance = chartComp?.chartInstance
+  if (chartInstance && typeof chartInstance.toBase64Image === 'function') {
+    const imageUrl = chartInstance.toBase64Image('image/png', 1.0)
     const link = document.createElement('a')
     link.href = imageUrl
-    link.download = `${chartRef}.jpg`
+    link.download = `soilTempChart_${device}.png`
+    document.body.appendChild(link)
     link.click()
+    document.body.removeChild(link)
+  } else {
+    alert('Chart image could not be generated. Please ensure the chart is visible.')
+  }
+}
+
+function downloadChartImage(chartRef: string) {
+  let chartInstance = null
+  if (chartRef === 'co2Chart') {
+    chartInstance = co2Chart.value?.chartInstance
+  }
+  if (chartInstance && typeof chartInstance.toBase64Image === 'function') {
+    const imageUrl = chartInstance.toBase64Image('image/png', 1.0)
+    const link = document.createElement('a')
+    link.href = imageUrl
+    link.download = `${chartRef}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } else {
+    alert('Chart image could not be generated. Please ensure the chart is visible.')
   }
 }
 
