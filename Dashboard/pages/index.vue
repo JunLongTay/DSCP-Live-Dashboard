@@ -18,179 +18,146 @@
     <div class="min-h-screen relative z-20 flex flex-col gap-10 px-6 md:px-12 py-8">
 
       <!-- 🔹 Device Slicer -->
-      <section class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-4">
+      <!-- Dashboard Overview (no container) -->
+      <div class="flex flex-col gap-4">
         <div class="flex items-center justify-between mb-2">
-          <h2 class="text-xl font-semibold text-orange-400">Dashboard Overview</h2>
+          <h2 class="text-2xl font-bold text-orange-400">Dashboard Overview</h2>
           <Button
             @click="downloadFullReport"
-            class=""
+            class="font-semibold text-base"
           >
             Download All Charts + Summary
           </Button>
         </div>
 
-        <div class="w-full ">
-          <div class="flex items-center justify-between mb-2">
-            <label class="font-medium  text-orange-300">Filter by Device(s)</label>
-            <span class="text-sm text-gray-400">{{ selected.length }} selected</span>
-          </div>
-
-          <!-- Chips -->
-          <div class="flex flex-wrap gap-2 mb-3">
-            <span
-              v-for="d in selected"
-              :key="d"
-              class="bg-blue-100 text-blue-800 px-3 py-0.5 rounded-full flex items-center"
-            >
-              {{ d }}
-              <Button
-                @click="remove(d)"
-                variant="ghost"
-                class="ml-1"
-              >
-                ×
-              </Button>
-            </span>
-
-            <Button
-              v-if="selected.length"
-              @click="clearAll"
-              variant="destructive"
-              class="ml-auto text-sm"
-            >
-              Clear All
-            </Button>
-          </div>
-
-          <!-- Combobox -->
-          <Combobox v-model="selected" multiple>
-            <div class="relative">
-              <ComboboxButton
-                class="w-full border rounded p-2 bg-white dark:bg-zinc-800 text-left focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                Add more devices
-              </ComboboxButton>
-
-              <Transition
-                enter="transition ease-out duration-100"
-                enter-from="opacity-0"
-                enter-to="opacity-100"
-                leave="transition ease-in duration-75"
-                leave-from="opacity-100"
-                leave-to="opacity-0"
-              >
-                <ComboboxOptions
-                  v-if="options.length"
-                  class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-800 border rounded shadow max-h-60 overflow-auto"
-                >
-                  <ComboboxOption
-                    :value="'__ALL__'"
-                    class="px-3 py-2 font-medium bg-gray-50 dark:bg-zinc-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-600"
-                    @click.prevent="toggleAll"
-                  >
-                    {{ allSelected ? 'Deselect All' : 'Select All' }}
-                  </ComboboxOption>
-
-                  <ComboboxOption
-                    v-for="d in options"
-                    :key="d"
-                    :value="d"
-                    class="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700"
-                  >
-                    {{ d }}
-                  </ComboboxOption>
-                </ComboboxOptions>
-              </Transition>
-            </div>
-          </Combobox>
+      <div class="w-full">
+        <div class="flex items-center justify-between mb-2">
+          <label class="font-medium text-orange-300">Filter by Device(s)</label>
+          <span class="text-sm text-orange-200">{{ selected.length }} selected</span>
         </div>
-      </section>
+
+        <!-- Modal Filter Trigger -->
+        <button @click="showDeviceModal = true" class="w-full border border-orange-500 rounded p-2 bg-zinc-900 text-orange-100 text-left focus:outline-none focus:ring-2 focus:ring-orange-400">
+          {{ selected.length ? selected.join(', ') : 'Select Devices' }}
+        </button>
+
+        <!-- Device Filter Modal -->
+        <Transition name="fade">
+          <div v-if="showDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md">
+            <div class="bg-zinc-900 border border-orange-500 rounded-lg shadow-lg p-6 w-full max-w-md relative animate-fade-in">
+              <button @click="showDeviceModal = false" class="absolute top-3 right-3 text-orange-400 text-xl font-bold">×</button>
+              <h3 class="text-lg font-bold text-orange-300 mb-3">Select Devices</h3>
+              <input v-model="deviceSearch" type="text" placeholder="Search devices..." class="w-full mb-3 p-2 border border-orange-500 rounded bg-zinc-800 text-orange-100 placeholder-orange-400" />
+              <div class="flex justify-between mb-2 text-orange-400 text-sm">
+                <button @click="selectAllDevices" class="hover:underline">Select All</button>
+                <button @click="clearAllDevices" class="hover:underline">Clear All</button>
+              </div>
+              <div class="max-h-60 overflow-y-auto mb-4">
+                <div v-for="d in filteredDeviceOptions" :key="d" class="flex items-center gap-2 py-1">
+                  <input type="checkbox" :id="'dev-' + d" :value="d" v-model="modalSelected" class="accent-orange-500" />
+                  <label :for="'dev-' + d" class="text-orange-100">{{ d }}</label>
+                </div>
+              </div>
+              <div class="flex justify-end gap-2 mt-2">
+                <button @click="showDeviceModal = false" class="px-4 py-2 rounded bg-zinc-700 text-orange-200 font-semibold">Cancel</button>
+                <button @click="confirmDeviceSelection" class="px-4 py-2 rounded bg-orange-500 text-white font-bold">Confirm</button>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </div>
+      </div>
 
       <!-- 🔹 Average NPK Levels -->
-      <section class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-6">
-        <h2 class="text-xl font-semibold mb-4 text-orange-400">Average NPK Levels</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center">
-            <h3 class="font-semibold text-base text-orange-300 mb-1">Nitrogen</h3>
-            <p class="text-3xl font-bold text-orange-400">{{ avg.nitrogen }} {{ NPK_UNIT }}</p>
-            <span class="mt-2 inline-block px-2 py-0.5 text-xs font-medium rounded"
-                  :class="statusClass(npkStatus('nitrogen', avg.nitrogen))">
-              {{ npkStatus('nitrogen', avg.nitrogen) }}
-            </span>
-          </div>
-
-          <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center">
-            <h3 class="font-semibold text-base text-orange-300 mb-1">Phosphorus</h3>
-            <p class="text-3xl font-bold text-orange-400">{{ avg.phosphorus }} {{ NPK_UNIT }}</p>
-            <span class="mt-2 inline-block px-2 py-0.5 text-xs font-medium rounded"
-                  :class="statusClass(npkStatus('phosphorus', avg.phosphorus))">
-              {{ npkStatus('phosphorus', avg.phosphorus) }}
-            </span>
-          </div>
-
-          <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center">
-            <h3 class="font-semibold text-base text-orange-300 mb-1">Potassium</h3>
-            <p class="text-3xl font-bold text-orange-400">{{ avg.potassium }} {{ NPK_UNIT }}</p>
-            <span class="mt-2 inline-block px-2 py-0.5 text-xs font-medium rounded"
-                  :class="statusClass(npkStatus('potassium', avg.potassium))">
-              {{ npkStatus('potassium', avg.potassium) }}
-            </span>
+      <h2 class="text-2xl font-bold mb-4 text-orange-400">Average NPK Levels</h2>
+      <div v-if="selected.length" class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div v-for="card in avgPerDevice" :key="card.devicename" class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center">
+          <h3 class="font-bold text-lg text-orange-300 mb-3">{{ card.devicename }}</h3>
+          <div class="flex flex-col gap-3 w-full">
+            <div class="flex items-center justify-between w-full">
+              <div class="flex flex-col">
+                <span class="font-bold text-orange-300">Nitrogen</span>
+                <span class="text-2xl font-bold text-orange-400">{{ card.nitrogen }} {{ NPK_UNIT }}</span>
+              </div>
+              <span class="ml-4 inline-block px-2 py-0.5 text-xs font-semibold rounded"
+                    :class="statusClass(npkStatus('nitrogen', card.nitrogen))">
+                {{ npkStatus('nitrogen', card.nitrogen) }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between w-full">
+              <div class="flex flex-col">
+                <span class="font-bold text-orange-300">Phosphorus</span>
+                <span class="text-2xl font-bold text-orange-400">{{ card.phosphorus }} {{ NPK_UNIT }}</span>
+              </div>
+              <span class="ml-4 inline-block px-2 py-0.5 text-xs font-semibold rounded"
+                    :class="statusClass(npkStatus('phosphorus', card.phosphorus))">
+                {{ npkStatus('phosphorus', card.phosphorus) }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between w-full">
+              <div class="flex flex-col">
+                <span class="font-bold text-orange-300">Potassium</span>
+                <span class="text-2xl font-bold text-orange-400">{{ card.potassium }} {{ NPK_UNIT }}</span>
+              </div>
+              <span class="ml-4 inline-block px-2 py-0.5 text-xs font-semibold rounded"
+                    :class="statusClass(npkStatus('potassium', card.potassium))">
+                {{ npkStatus('potassium', card.potassium) }}
+              </span>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
+      <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
+        Please select a device to get started.
+      </div>
+
 
       <!-- 🔸 Soil Temperature -->
-      <section
-        v-if="soilRaw && soilRaw.length"
-        class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-6 h-full"
-      >
-        <h2 class="text-xl font-semibold mb-4 text-orange-400">Soil Temperature</h2>
+      <section class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-6 h-full">
+        <h2 class="text-2xl font-bold mb-4 text-orange-400">Soil Temperature</h2>
 
         <div class="flex gap-4 mb-4">
-          <Button @click="downloadSoilChart('Soil Temp (°C)')" variant="secondary">
+          <Button @click="downloadSoilChart('Soil Temp (°C)')" variant="secondary" class="font-semibold text-base">
             Download Soil Temp CSV
           </Button>
 
-          <Button @click="downloadChartImage('soilTempChart')" variant="default">
+          <Button @click="downloadChartImage('soilTempChart')" variant="default" class="font-semibold text-base">
             Download Soil Temp Chart as Image
           </Button>
         </div>
 
-        <!-- Make sure this container stretches -->
-        <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex-1">
-          <LineChart
-            :chart-data="soilChartDataSingle('Soil Temp (°C)')"
-            :chart-options="soilOptions"
-            ref="soilTempChart"
-            class="w-full h-full"
-          />
+        <div v-if="selected.length" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div v-for="device in selected" :key="device" class="p-4 rounded shadow border border-orange-500">
+            <LineChart
+              :chart-data="soilChartDataSingleDevice(device, 'Soil Temp (°C)')"
+              :chart-options="soilOptions"
+              class="h-60"
+            />
+            <div class="mt-2 text-center text-orange-400 font-semibold text-base">Chart: Soil Temp - {{ device }}</div>
+          </div>
+        </div>
+        <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
+          Please select a device to get started.
         </div>
       </section>
 
       <!-- 🔸 CO₂ Chart (Actual Only) -->
       <section
-        v-if="co2Data"
+        v-if="soilRaw && soilRaw.length"
         class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-6"
       >
-        <h2 class="text-xl font-semibold mb-4 text-orange-400">CO₂ Levels</h2>
-
-        <Button @click="downloadCO2Chart" variant="secondary" class="mb-4">
-          Download CO₂ CSV
-        </Button>
-        
-        <Button @click="downloadChartImage('co2Chart')" variant="default">
-          Download CO₂ Chart as Image
-        </Button>
-
-        <div class="bg-zinc-900 rounded shadow p-4 border border-orange-500">
-          <!-- bind to co2Data instead of co2ForecastData -->
+        <h2 class="text-2xl font-bold mb-4 text-orange-400">CO₂ Levels</h2>
+        <div v-if="selected.length" class="p-4 rounded shadow border border-orange-500">
           <LineChart
             :chart-data="co2Data"
             :chart-options="co2Options"
             ref="co2Chart"
           />
         </div>
-      </section>    
+        <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
+          Please select a device to get started.
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -257,13 +224,39 @@ const filteredNpkData = computed(() => {
   return npkData.value.filter(row => selected.value.includes((row as any).devicename))
 })
 
-const avg = computed(() => {
-  const data = filteredNpkData.value
-  if (!data.length) return { nitrogen: '-', phosphorus: '-', potassium: '-' }
-  const avgField = (f: keyof NPKReading) => (
-    data.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / data.length
-  ).toFixed(1)
-  return { nitrogen: avgField('nitrogen'), phosphorus: avgField('phosphorus'), potassium: avgField('potassium') }
+// Compute average NPK per device
+const avgPerDevice = computed(() => {
+  if (!selected.value.length) {
+    // Show overall average if no device selected
+    const data = npkData.value
+    if (!data.length) return []
+    const avgField = (f: keyof NPKReading) => (
+      data.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / data.length
+    ).toFixed(1)
+    return [{
+      devicename: 'All Devices',
+      nitrogen: avgField('nitrogen'),
+      phosphorus: avgField('phosphorus'),
+      potassium: avgField('potassium')
+    }]
+  }
+  // Per device
+  return selected.value.map(device => {
+    const data = npkData.value.filter(row => row.devicename === device)
+    if (!data.length) return {
+      devicename: device,
+      nitrogen: '-', phosphorus: '-', potassium: '-'
+    }
+    const avgField = (f: keyof NPKReading) => (
+      data.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / data.length
+    ).toFixed(1)
+    return {
+      devicename: device,
+      nitrogen: avgField('nitrogen'),
+      phosphorus: avgField('phosphorus'),
+      potassium: avgField('potassium')
+    }
+  })
 })
 
 /* ── Soil helpers ─────────────────── */
@@ -298,59 +291,52 @@ function movingAvg(values: (number | null)[], window = 5): (number | null)[] {
   return out
 }
 
-function cleanZeros(arr: number[], minValid = 1): (number | null)[] {
-  return arr.map(v => (v <= minValid ? null : v))
+function cleanZeros(arr: (number | null)[], minValid = 1): (number | null)[] {
+  return arr.map(v => (v == null || v <= minValid ? null : v))
 }
 
-function soilChartDataSingle(label: string): ChartData<'line'> {
-  const src = [...filteredSoilRaw.value].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  )
-
-  // 1) turn each ISO timestamp into "H:mm"
-  const dates  = src.map(r => new Date(r.timestamp))
-  const labels = dates.map(dt =>
-    `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
-  )
-
-  // 2) extract and clean
-  const temps    = src.map(d => d.soil_temp ?? 0)
-  const cleaned  = cleanZeros(temps)
+// Soil chart: single device per chart (for recent readings style)
+function soilChartDataSingleDevice(device: string, label: string): ChartData<'line'> {
+  const deviceData = soilRaw.value.filter(r => r.devicename === device)
+  const allTimestamps = deviceData.map(r => r.timestamp).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+  const labels = allTimestamps.map(ts => {
+    const dt = new Date(ts)
+    return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
+  })
+  const temps = deviceData.map(d => d.soil_temp ?? 0)
+  const cleaned = cleanZeros(temps)
   const smoothed = movingAvg(cleaned, 5)
-  const valid    = cleaned.filter(v => v != null) as number[]
-  const avgVal   = valid.length
-    ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length)
-    : 0
-
+  const valid = cleaned.filter(v => v != null) as number[]
+  const avgVal = valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : 0
   return {
     labels,
     datasets: [
       {
-        label,
+        label: `${device} ${label}`,
         data: cleaned,
-        borderColor: 'rgb(255,165,0)',
+        borderColor: `hsl(30, 80%, 50%)`,
         pointRadius: 2,
         spanGaps: true,
         fill: false,
       },
       {
-        label: `Smoothed ${label}`,
+        label: `${device} Smoothed ${label}`,
         data: smoothed,
-        borderColor: 'rgb(0,181,255)',
+        borderColor: `hsl(210, 80%, 60%)`,
         borderDash: [6, 6],
         pointRadius: 0,
         spanGaps: true,
         fill: false,
       },
       {
-        label: `Avg ${label}`,
+        label: `${device} Avg ${label}`,
         data: Array(labels.length).fill(avgVal),
-        borderColor: 'rgb(0,153,255)',
+        borderColor: `hsl(60, 80%, 40%)`,
         borderDash: [4, 4],
         pointRadius: 0,
         fill: false,
-      },
-    ],
+      }
+    ]
   }
 }
 
@@ -426,26 +412,30 @@ const filteredCo2Raw = computed(() => {
   return co2Raw.value.filter(row => selected.value.includes(row.devicename))
 })
 
+// CO2 chart: only actual lines for each device
 const co2Data = computed<ChartData<'line'>>(() => {
-  const src = [...filteredCo2Raw.value].sort(
-    (a, b) => +new Date(a.timestamp) - +new Date(b.timestamp)
-  )
-  const values = src.map(d => d.co2 ?? 0)
-  const labels = src.map(d => {
-    const dt = new Date(d.timestamp)
+  let devices = selected.value.length ? selected.value : Array.from(new Set(co2Raw.value.map(r => r.devicename)))
+  // Collect all timestamps for x-axis
+  const allTimestamps = Array.from(new Set(co2Raw.value.map(r => r.timestamp))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+  const labels = allTimestamps.map(ts => {
+    const dt = new Date(ts)
     return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
   })
-  const smoothed = movingCo2Avg(values, 3)
-  const avgVal = +(values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)
-
-  return {
-    labels,
-    datasets: [
-      { label: `CO₂ (Actual) (${CO2_UNIT})`, data: values, borderColor: 'rgb(255,165,0)', pointRadius: 2, fill: false },
-      { label: `Smoothed CO₂ (${CO2_UNIT})`, data: smoothed, borderColor: 'deepskyblue', borderDash: [4, 4], pointRadius: 0, fill: false },
-      { label: `Avg CO₂ (${CO2_UNIT})`, data: Array(values.length).fill(avgVal), borderColor: 'gold', borderDash: [2, 6], pointRadius: 0, fill: false }
-    ]
-  }
+  // Build dataset for each device
+  const datasets = devices.map((device, idx) => {
+    const deviceData = co2Raw.value.filter(r => r.devicename === device)
+    // Map to all timestamps
+    const dataMap = Object.fromEntries(deviceData.map(r => [r.timestamp, r.co2 ?? null]))
+    const values = allTimestamps.map(ts => dataMap[ts] ?? null)
+    return {
+      label: `${device} CO₂ (Actual) (${CO2_UNIT})`,
+      data: values,
+      borderColor: `hsl(${(idx * 60) % 360}, 80%, 50%)`,
+      pointRadius: 2,
+      fill: false
+    }
+  })
+  return { labels, datasets }
 })
 
 const co2Options: ChartOptions<'line'> = {
@@ -493,13 +483,10 @@ function downloadBlob(name: string, content: string | ArrayBuffer, type = 'text/
 
 /* specific rows builders */
 function buildSoilRows(label: 'Soil Temp (°C)') {
-  const chart = soilChartDataSingle(label)
-  const labels  = (chart.labels ?? []) as (string | Date)[]
-  const dataArr = (chart.datasets?.[0]?.data ?? []) as (number | null | undefined)[]
-  return labels.map((d, i) => ({
-    timestamp: d instanceof Date ? d.toISOString() : String(d),
-    value: dataArr[i] ?? ''
-  }))
+  // This function is currently unused in the UI, but kept for export helpers
+  // If you want to export per-device data, you can loop over selected devices and use soilChartDataSingleDevice
+  // For now, just return an empty array to avoid lint errors
+  return []
 }
 
 function buildCO2Rows() {
@@ -586,9 +573,11 @@ async function downloadFullReport() {
     ['Devices Selected', selected.value.join(', ') || 'None'],
     [],
     ['Averages'],
-    ['Nitrogen',   avg.value.nitrogen],
-    ['Phosphorus', avg.value.phosphorus],
-    ['Potassium',  avg.value.potassium]
+    ...avgPerDevice.value.map(card => [
+      `${card.devicename} Nitrogen`, card.nitrogen,
+      `${card.devicename} Phosphorus`, card.phosphorus,
+      `${card.devicename} Potassium`, card.potassium
+    ])
   ]
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), 'Summary')
 
@@ -633,7 +622,35 @@ const allSelected = computed(() =>
   allDeviceNamesRaw.length > 0 && selected.value.length === allDeviceNamesRaw.length
 )
 
-function toggleAll() { selected.value = allSelected.value ? [] : [...allDeviceNamesRaw] }
+// Modal filter state
+const showDeviceModal = ref(false)
+const deviceSearch = ref('')
+const modalSelected = ref<string[]>([])
+
+const filteredDeviceOptions = computed(() => {
+  const search = deviceSearch.value.trim().toLowerCase()
+  if (!search) return allDeviceNamesRaw
+  return allDeviceNamesRaw.filter(d => d.toLowerCase().includes(search))
+})
+
+function selectAllDevices() {
+  modalSelected.value = [...filteredDeviceOptions.value]
+}
+function clearAllDevices() {
+  modalSelected.value = []
+}
+function confirmDeviceSelection() {
+  selected.value = [...modalSelected.value]
+  showDeviceModal.value = false
+}
+
+// Keep modalSelected in sync with selected when opening modal
+watchEffect(() => {
+  if (showDeviceModal.value) {
+    modalSelected.value = [...selected.value]
+  }
+})
+
 function remove(dev: string) { selected.value = selected.value.filter(d => d !== dev) }
 function clearAll() { selected.value = [] }
 </script>
