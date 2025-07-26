@@ -22,14 +22,27 @@
       <div class="flex flex-col gap-4">
         <div class="flex items-center justify-between mb-2">
           <h1 class="text-3xl font-bold text-orange-400 font-roboto-slab">Dashboard Overview</h1>
-          <Button
-            @click="downloadFullReport"
-            class="font-semibold text-base"
-          >
-            Download All Charts + Summary
-          </Button>
+          <!-- Export Data Dropdown -->
+          <div class="relative" @click.stop>
+            <button @click="showExportMenu = !showExportMenu" class="px-4 py-2 rounded bg-orange-500 text-white font-semibold shadow hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-colors duration-200">
+              Export Data ▼
+            </button>
+            <div v-if="showExportMenu" class="absolute right-0 mt-2 w-64 bg-zinc-900 border border-orange-500 rounded shadow-lg z-50 animate-fade-in">
+              <div class="p-3 border-b border-orange-500">
+                <div class="text-orange-400 font-bold mb-2">Selected Data</div>
+                <button @click="exportSelected('csv'); showExportMenu = false" class="w-full text-left px-3 py-2 rounded hover:bg-orange-500 hover:text-white text-orange-100 font-medium">Export as CSV</button>
+                <button @click="exportSelected('xlsx'); showExportMenu = false" class="w-full text-left px-3 py-2 rounded hover:bg-orange-500 hover:text-white text-orange-100 font-medium">Export as Excel</button>
+              </div>
+              <div class="p-3">
+                <div class="text-orange-400 font-bold mb-2">Full Report</div>
+                <button @click="downloadFullReport(); showExportMenu = false" class="w-full text-left px-3 py-2 rounded hover:bg-orange-500 hover:text-white text-orange-100 font-medium">Download All Charts + Summary</button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="w-full h-0.5 bg-orange-500 opacity-70 mb-8"></div>
+
+        <!-- Divider line below header -->
+        <hr class="border-t-2 border-orange-700 mb-4" />
 
       <div class="w-full mb-8">
         <div class="flex items-center justify-between mb-2">
@@ -188,6 +201,7 @@ import type { ChartData, ChartOptions } from 'chart.js'
 import 'chartjs-adapter-date-fns'
 import { Button } from '@/components/ui/button'
 
+
 /* ── Types ───────────────────────── */
 interface NPKReading { timestamp: string; nitrogen: number | null; phosphorus: number | null; potassium: number | null; devicename: string }
 interface SoilReading { timestamp: string; soil_temp: number | null; devicename: string }
@@ -224,9 +238,9 @@ const npkData = ref<NPKReading[]>([])
 
 watchEffect(async () => {
   const bucket = 60    // minutes per bucket
-  const window = 1440  // minutes back (24 hrs)
+  const windowMin = 1440  // minutes back (24 hrs)
 
-  const url = `http://localhost:3001/compost-npk?bucket_min=${bucket}&window_min=${window}`
+  const url = `http://localhost:3001/compost-npk?bucket_min=${bucket}&window_min=${windowMin}`
   npkData.value = await $fetch<NPKReading[]>(url)
 })
 
@@ -279,9 +293,9 @@ const soilRaw = ref<SoilReading[]>([])
 
 watchEffect(async () => {
   const bucket = 60    // 1‑hour buckets
-  const window = 1440  // last 1440 minutes = 24 hours
+  const windowMin = 1440  // last 1440 minutes = 24 hours
 
-  const url = `http://localhost:3001/soil-temp-co2?bucket_min=${bucket}&window_min=${window}`
+  const url = `http://localhost:3001/soil-temp-co2?bucket_min=${bucket}&window_min=${windowMin}`
   soilRaw.value = await $fetch<SoilReading[]>(url)
 })
 
@@ -292,11 +306,11 @@ const filteredSoilRaw = computed<SoilReading[]>(() => {
   );
 });
 
-function movingAvg(values: (number | null)[], window = 5): (number | null)[] {
+function movingAvg(values: (number | null)[], windowMin = 5): (number | null)[] {
   const out: (number | null)[] = []
   for (let i = 0; i < values.length; i++) {
     const slice = values
-      .slice(Math.max(0, i - window + 1), i + 1)
+      .slice(Math.max(0, i - windowMin + 1), i + 1)
       .filter(v => v != null) as number[]
     out.push(slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : null)
   }
@@ -394,12 +408,12 @@ const CO2_UNIT = 'ppm'
 const FORECAST_RATIO = 0.25
 const co2Raw = ref<CO2Reading[]>([])
 const bucket = 60    // minutes per bucket
-const window = 1440  // minutes back (24 hrs)
+const windowMin = 1440  // minutes back (24 hrs)
 
 watchEffect(async () => {
   const qs = new URLSearchParams({
     bucket_min: bucket.toString(),
-    window_min: window.toString(),
+    window_min: windowMin.toString(),
   }).toString()
 
   // now you get one averaged co2 point per hour for the past day
@@ -554,6 +568,21 @@ async function exportSelected(fmt: ExportFmt) {
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
   downloadBlob('selected_data.xlsx', wbout, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 }
+
+const showExportMenu = ref(false)
+
+function handleClickOutside(event: MouseEvent) {
+  const menu = document.querySelector('.relative .absolute')
+  if (showExportMenu.value && menu && !menu.contains(event.target as Node)) {
+    showExportMenu.value = false
+  }
+}
+onMounted(() => {
+  window.addEventListener('click', handleClickOutside)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('click', handleClickOutside)
+})
 
 async function downloadFullReport() {
   const XLSX = await import(/* @vite-ignore */ 'xlsx')
