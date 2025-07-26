@@ -1,5 +1,5 @@
 <template>
-  <div class="relative">
+  <div class="relative min-h-screen">
     <!-- Blurred plant background with black overlay -->
     <img src="public/home.jpg" alt="Plant background" class="fixed top-0 left-0 w-full h-full object-cover z-0 blur-md opacity-70 pointer-events-none select-none" />
     <div class="fixed top-0 left-0 w-full h-full bg-black/80 z-10 pointer-events-none" />
@@ -7,8 +7,8 @@
     <div class="fixed top-0 left-0 bottom-0 w-64 h-full z-30 border-r-2 border-orange-800 shadow-xl">
       <Sidebar />
     </div>
-    <!-- Main content, margin-left for sidebar, above overlay -->
-    <div class="relative z-20 flex flex-col">
+    <!-- Main content centered and padded like index.vue -->
+    <div class="min-h-screen relative z-20 flex flex-col px-6 md:px-12 py-8">
       <!-- 🔝 Header with Sticky Filter Bar -->
       <div class="sticky z-40 shadow-md border-b border-orange-700 pb-4 mb-8 ">
         <div class="flex flex-wrap justify-between items-center gap-6 mb-4">
@@ -67,7 +67,7 @@
       </div>
 
     <!-- 🔹 Device Slicer -->
-      <section class="  pl-0 mb-10">
+      <section class="pl-0 mb-10">
   <div class="flex items-center justify-between mb-2">
           <label class="font-medium text-orange-300">Filter by Device(s)</label>
           <span class="text-sm text-orange-200">{{ selected.length }} selected</span>

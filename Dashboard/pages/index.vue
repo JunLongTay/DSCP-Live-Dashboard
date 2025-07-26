@@ -27,7 +27,7 @@
             <button @click="showExportMenu = !showExportMenu" class="px-4 py-2 rounded bg-orange-500 text-white font-semibold shadow hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-colors duration-200">
               Export Data ▼
             </button>
-            <div v-if="showExportMenu" class="absolute right-0 mt-2 w-64 bg-zinc-900 border border-orange-500 rounded shadow-lg z-50 animate-fade-in">
+            <div v-if="showExportMenu" class="absolute right-0 mt-2 w-64 bg-zinc-900 border border-orange-500 rounded shadow-lg z-50">
               <div class="p-3">
                 <div class="text-orange-400 font-bold mb-2">Full Report</div>
                 <button @click="downloadFullReport(); showExportMenu = false" class="w-full text-left px-3 py-2 rounded hover:bg-orange-500 hover:text-white text-orange-100 font-medium">Download All Charts + Summary</button>
@@ -45,15 +45,43 @@
           <span class="text-sm text-orange-200">{{ selected.length }} selected</span>
         </div>
 
+        <!-- Selected Devices Chips & Clear All -->
+        <div v-if="selected.length" class="flex items-center flex-wrap gap-2 mb-2">
+          <span
+            v-for="dev in selected"
+            :key="dev"
+            class="inline-flex items-center px-4 py-1 rounded-full bg-orange-800 text-orange-100 font-medium text-sm mr-2 animate-fade-in"
+          >
+            {{ dev }}
+            <button
+              @click.stop="remove(dev)"
+              class="ml-2 text-orange-300 hover:text-orange-400 focus:outline-none"
+              aria-label="Remove device"
+            >
+              ×
+            </button>
+          </span>
+          <button
+            @click="clearAll"
+            class="ml-2 text-orange-400 text-sm font-semibold hover:underline"
+            style="margin-left:auto"
+          >
+            Clear All
+          </button>
+        </div>
+
         <!-- Modal Filter Trigger -->
-        <button @click="showDeviceModal = true" class="w-full border border-orange-500 rounded p-2 bg-zinc-900 text-orange-100 text-left focus:outline-none focus:ring-2 focus:ring-orange-400">
-          {{ selected.length ? selected.join(', ') : 'Select Devices' }}
+        <button
+          @click="showDeviceModal = true"
+          class="w-full border border-orange-500 rounded p-2 bg-zinc-900 text-orange-100 text-left focus:outline-none focus:ring-2 focus:ring-orange-400"
+        >
+          Select Devices
         </button>
 
         <!-- Device Filter Modal -->
         <Transition name="fade">
           <div v-if="showDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md">
-            <div class="bg-zinc-900 border border-orange-500 rounded-lg shadow-lg p-6 w-full max-w-md relative">
+            <div class="bg-zinc-900 border border-orange-500 rounded-lg shadow-lg p-6 w-full max-w-md relative animate-fade-in">
               <button @click="showDeviceModal = false" class="absolute top-3 right-3 text-orange-400 text-xl font-bold">×</button>
               <h3 class="text-lg font-bold text-orange-300 mb-3">Select Devices</h3>
               <input v-model="deviceSearch" type="text" placeholder="Search devices..." class="w-full mb-3 p-2 border border-orange-500 rounded bg-zinc-800 text-orange-100 placeholder-orange-400" />
@@ -75,7 +103,7 @@
           </div>
         </Transition>
       </div>
-      </div>
+    </div>
 
       <!-- 🔹 Average NPK Levels -->
       <h2 class="text-2xl font-bold mb-4 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">Average NPK Levels</h2>
@@ -495,7 +523,7 @@ function downloadBlob(name: string, content: string | ArrayBuffer, type = 'text/
 }
 
 /* specific rows builders */
-function buildSoilRows(label: 'Soil Temp (°C)') {
+function buildSoilRows(label: 'Soil Temp (°C') {
   // This function is currently unused in the UI, but kept for export helpers
   // If you want to export per-device data, you can loop over selected devices and use soilChartDataSingleDevice
   // For now, just return an empty array to avoid lint errors
