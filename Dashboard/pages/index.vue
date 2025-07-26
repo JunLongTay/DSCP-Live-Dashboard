@@ -28,11 +28,6 @@
               Export Data ▼
             </button>
             <div v-if="showExportMenu" class="absolute right-0 mt-2 w-64 bg-zinc-900 border border-orange-500 rounded shadow-lg z-50 animate-fade-in">
-              <div class="p-3 border-b border-orange-500">
-                <div class="text-orange-400 font-bold mb-2">Selected Data</div>
-                <button @click="exportSelected('csv'); showExportMenu = false" class="w-full text-left px-3 py-2 rounded hover:bg-orange-500 hover:text-white text-orange-100 font-medium">Export as CSV</button>
-                <button @click="exportSelected('xlsx'); showExportMenu = false" class="w-full text-left px-3 py-2 rounded hover:bg-orange-500 hover:text-white text-orange-100 font-medium">Export as Excel</button>
-              </div>
               <div class="p-3">
                 <div class="text-orange-400 font-bold mb-2">Full Report</div>
                 <button @click="downloadFullReport(); showExportMenu = false" class="w-full text-left px-3 py-2 rounded hover:bg-orange-500 hover:text-white text-orange-100 font-medium">Download All Charts + Summary</button>
@@ -145,7 +140,7 @@
               <div class="text-center text-orange-400 font-semibold text-base">Chart: Soil Temp - {{ device }}</div>
               <button
                 @click="downloadSingleSoilChart(idx, device)"
-                class="flex items-center gap-2 px-2 py-1 rounded bg-zinc-900 border border-orange-500 text-orange-400 font-semibold hover:bg-orange-500 hover:text-white transition ml-2"
+                class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold ml-2"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" /></svg>
                 Download
@@ -174,7 +169,7 @@
           <div class="mt-2 flex items-center justify-end w-full">
             <button
               @click="downloadChartImage('co2Chart')"
-              class="flex items-center gap-2 px-2 py-1 rounded bg-zinc-900 border border-orange-500 text-orange-400 font-semibold hover:bg-orange-500 hover:text-white transition"
+              class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" /></svg>
               Download
@@ -517,55 +512,53 @@ function buildSoilRows(label: 'Soil Temp (°C)') {
   return []
 }
 
-function buildCO2Rows() {
-  const chart   = co2Data.value
-  const labels  = chart.labels ?? []
-  const actual  = chart.datasets?.[0]?.data ?? []
-  const forecast= chart.datasets?.[1]?.data ?? []
-  const avgLine = chart.datasets?.[2]?.data ?? []
-  return labels.map((t: any, i: number) => ({
-    timestamp: t,
-    actual: (actual[i] as number | null) ?? '',
-    forecast: (forecast[i] as number | null) ?? '',
-    avg: (avgLine[i] as number | null) ?? ''
-  }))
-}
-function buildNPKRows() {
-  return npkData.value.map(r => ({
+function buildNPKRowsFiltered() {
+  return filteredNpkData.value.map(r => ({
     timestamp: r.timestamp,
+    devicename: r.devicename,
     nitrogen: r.nitrogen ?? '',
     phosphorus: r.phosphorus ?? '',
     potassium: r.potassium ?? ''
   }))
 }
 
-/* old CSV buttons */
-function downloadSoilChart(label: 'Soil Temp (°C)') {
-  const rows = buildSoilRows(label)
-  downloadBlob(`${label.replace(/\W+/g,'_')}.csv`, toCSV(rows, ['timestamp', label === 'Soil Temp (°C)' ? 'value' : 'value']))
+function buildSoilRowsFiltered() {
+  return filteredSoilRaw.value.map(r => ({
+    timestamp: r.timestamp,
+    devicename: r.devicename,
+    soil_temp: r.soil_temp ?? ''
+  }))
 }
-function downloadCO2Chart() {
-  const rows = buildCO2Rows()
-  downloadBlob('co2.csv', toCSV(rows, ['timestamp','actual','forecast','avg']))
+
+function buildCO2RowsFiltered() {
+  return filteredCo2Raw.value.map(r => ({
+    timestamp: r.timestamp,
+    devicename: r.devicename,
+    co2: r.co2 ?? ''
+  }))
 }
 
 /* new export panel */
 type ExportFmt = 'csv' | 'xlsx'
 
+
 async function exportSelected(fmt: ExportFmt) {
-  const soilTempRows = buildSoilRows('Soil Temp (°C)')
-  const co2Rows      = buildCO2Rows()
+  const npkRows = buildNPKRowsFiltered()
+  const soilRows = buildSoilRowsFiltered()
+  const co2Rows = buildCO2RowsFiltered()
 
   if (fmt === 'csv') {
-    downloadBlob('soil_temp.csv', toCSV(soilTempRows, ['timestamp','value']))
-    downloadBlob('co2.csv',       toCSV(co2Rows,      ['timestamp','actual','forecast','avg']))
+    downloadBlob('npk.csv', toCSV(npkRows, ['timestamp', 'devicename', 'nitrogen', 'phosphorus', 'potassium']))
+    downloadBlob('soil_temp.csv', toCSV(soilRows, ['timestamp', 'devicename', 'soil_temp']))
+    downloadBlob('co2.csv', toCSV(co2Rows, ['timestamp', 'devicename', 'co2']))
     return
   }
 
   const XLSX = await import(/* @vite-ignore */ 'xlsx')
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(soilTempRows), 'Soil Temp')
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(co2Rows),      'CO2')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(npkRows), 'NPK')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(soilRows), 'Soil Temp')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(co2Rows), 'CO2')
 
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
   downloadBlob('selected_data.xlsx', wbout, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -587,46 +580,74 @@ onBeforeUnmount(() => {
 })
 
 async function downloadFullReport() {
-  const XLSX = await import(/* @vite-ignore */ 'xlsx')
-  const wb = XLSX.utils.book_new()
+  // Gather all filtered data
+  const npkRows = buildNPKRowsFiltered()
+  const soilRows = buildSoilRowsFiltered()
+  const co2Rows = buildCO2RowsFiltered()
 
-  // Add NPK card data
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(buildNPKRows()), 'NPK')
+  // Build a map for quick lookup
+  const key = (row: any) => `${row.timestamp}|${row.devicename}`
+  const merged: Record<string, any> = {}
 
-  // Add Soil Temp chart data
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(buildSoilRows('Soil Temp (°C)')), 'Soil Temp')
+  npkRows.forEach(row => {
+    merged[key(row)] = {
+      timestamp: row.timestamp,
+      devicename: row.devicename,
+      nitrogen: row.nitrogen,
+      phosphorus: row.phosphorus,
+      potassium: row.potassium,
+      soil_temp: '',
+      co2: ''
+    }
+  })
 
-  // Add CO₂ chart data
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(buildCO2Rows()), 'CO2')
+  soilRows.forEach(row => {
+    const k = key(row)
+    if (!merged[k]) {
+      merged[k] = {
+        timestamp: row.timestamp,
+        devicename: row.devicename,
+        nitrogen: '',
+        phosphorus: '',
+        potassium: '',
+        soil_temp: row.soil_temp,
+        co2: ''
+      }
+    } else {
+      merged[k].soil_temp = row.soil_temp
+    }
+  })
 
-  // Add device slicer selection
-  XLSX.utils.book_append_sheet(
-    wb,
-    XLSX.utils.aoa_to_sheet([
-      ['Selected Devices'],
-      ...selected.value.map(dev => [dev])
-    ]),
-    'Device Slicer'
+  co2Rows.forEach(row => {
+    const k = key(row)
+    if (!merged[k]) {
+      merged[k] = {
+        timestamp: row.timestamp,
+        devicename: row.devicename,
+        nitrogen: '',
+        phosphorus: '',
+        potassium: '',
+        soil_temp: '',
+        co2: row.co2
+      }
+    } else {
+      merged[k].co2 = row.co2
+    }
+  })
+
+  // Convert merged object to array
+  const allRows = Object.values(merged)
+
+  // Export as CSV
+  downloadBlob(
+    'full_report.csv',
+    toCSV(
+      allRows,
+      ['timestamp', 'devicename', 'nitrogen', 'phosphorus', 'potassium', 'soil_temp', 'co2']
+    )
   )
-
-  // Add summary sheet
-  const summary = [
-    ['Dashboard Export Summary'],
-    ['Generated', new Date().toLocaleString()],
-    ['Devices Selected', selected.value.join(', ') || 'None'],
-    [],
-    ['Averages'],
-    ...avgPerDevice.value.map(card => [
-      `${card.devicename} Nitrogen`, card.nitrogen,
-      `${card.devicename} Phosphorus`, card.phosphorus,
-      `${card.devicename} Potassium`, card.potassium
-    ])
-  ]
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), 'Summary')
-
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-  downloadBlob('full_report.xlsx', wbout, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 }
+
 
 /* ── Chart Download Functions ─────────────────── */
 const soilTempChartRefs = ref<any[]>([])
