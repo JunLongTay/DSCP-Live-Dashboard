@@ -17,6 +17,7 @@ ChartJS.register(
 
 const props = defineProps<{
   chartData: ChartData<'line'>
+  id?: string
 }>()
 
 // Color palette for up to 2 lines, fallback to more if needed
@@ -57,7 +58,7 @@ const chartOptions: ChartOptions<'line'> = {
     (you can tweak to h-[30vh], md:h-[50vh], etc.)
   -->
   <div class="w-full h-[40vh] md:h-[50vh]">
-    <Line :data="coloredChartData" :options="chartOptions" />
+    <Line :data="coloredChartData" :options="chartOptions" :id="props.id" />
   </div>
 </template>
 

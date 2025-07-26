@@ -139,6 +139,7 @@
               :chart-options="soilOptions"
               class="h-60"
               :ref="el => setSoilTempChartRef(el, idx)"
+              :id="`soil-temp-chart-${idx}`"
             />
             <div class="mt-2 flex items-center justify-between w-full">
               <div class="text-center text-orange-400 font-semibold text-base">Chart: Soil Temp - {{ device }}</div>
@@ -168,6 +169,7 @@
             :chart-data="co2Data"
             :chart-options="co2Options"
             ref="co2Chart"
+            id="co2-chart"
           />
           <div class="mt-2 flex items-center justify-end w-full">
             <button
@@ -635,37 +637,32 @@ function setSoilTempChartRef(el: any, idx: number) {
 }
 
 function downloadSingleSoilChart(idx: number, device: string) {
-  const chartComp = soilTempChartRefs.value[idx]
-  const chartInstance = chartComp?.chartInstance
-  if (chartInstance && typeof chartInstance.toBase64Image === 'function') {
-    const imageUrl = chartInstance.toBase64Image('image/png', 1.0)
-    const link = document.createElement('a')
-    link.href = imageUrl
-    link.download = `soilTempChart_${device}.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  } else {
-    alert('Chart image could not be generated. Please ensure the chart is visible.')
+  // Use canvas ID to get the chart image, matching live-plant.vue
+  const canvasId = `soil-temp-chart-${idx}`;
+  const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+  if (!canvas) {
+    alert('Chart image could not be generated. Please ensure the chart is visible.');
+    return;
   }
+  const link = document.createElement('a');
+  link.download = `Soil_Temp_${device}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
 }
 
 function downloadChartImage(chartRef: string) {
-  let chartInstance = null
-  if (chartRef === 'co2Chart') {
-    chartInstance = co2Chart.value?.chartInstance
+  // Use canvas ID for CO2 chart
+  let canvasId = '';
+  if (chartRef === 'co2Chart') canvasId = 'co2-chart';
+  const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+  if (!canvas) {
+    alert('Chart image could not be generated. Please ensure the chart is visible.');
+    return;
   }
-  if (chartInstance && typeof chartInstance.toBase64Image === 'function') {
-    const imageUrl = chartInstance.toBase64Image('image/png', 1.0)
-    const link = document.createElement('a')
-    link.href = imageUrl
-    link.download = `${chartRef}.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  } else {
-    alert('Chart image could not be generated. Please ensure the chart is visible.')
-  }
+  const link = document.createElement('a');
+  link.download = 'CO2_Chart.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
 }
 
 /* ── Refs for Chart Instances ─────────────────── */
