@@ -15,22 +15,23 @@
     </div>
 
     <!-- Main -->
-    <div class="min-h-screen relative z-20 flex flex-col gap-10 px-6 md:px-12 py-8">
+    <div class="min-h-screen relative z-20 flex flex-col px-6 md:px-12 py-8">
 
       <!-- 🔹 Device Slicer -->
       <!-- Dashboard Overview (no container) -->
       <div class="flex flex-col gap-4">
-      <div class="flex items-center justify-between mb-2">
-        <h2 class="text-3xl font-bold text-orange-400" style="font-family: 'Montserrat', 'Arial', sans-serif;">Dashboard Overview</h2>
-        <Button
-          @click="downloadFullReport"
-          class="font-semibold text-base"
-        >
-          Download All Charts + Summary
-        </Button>
-      </div>
+        <div class="flex items-center justify-between mb-2">
+          <h1 class="text-3xl font-bold text-orange-400 font-roboto-slab">Dashboard Overview</h1>
+          <Button
+            @click="downloadFullReport"
+            class="font-semibold text-base"
+          >
+            Download All Charts + Summary
+          </Button>
+        </div>
+        <div class="w-full h-0.5 bg-orange-500 opacity-70 mb-8"></div>
 
-      <div class="w-full">
+      <div class="w-full mb-8">
         <div class="flex items-center justify-between mb-2">
           <label class="font-medium text-orange-300">Filter by Device(s)</label>
           <span class="text-sm text-orange-200">{{ selected.length }} selected</span>
@@ -69,8 +70,8 @@
       </div>
 
       <!-- 🔹 Average NPK Levels -->
-      <h2 class="text-2xl font-bold mb-4 text-orange-400">Average NPK Levels</h2>
-      <div v-if="selected.length" class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <h2 class="text-2xl font-bold mb-4 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">Average NPK Levels</h2>
+      <div v-if="selected.length" class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
         <div v-for="card in avgPerDevice" :key="card.devicename" class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center transition-transform duration-200 hover:scale-105 hover:shadow-2xl">
           <h3 class="font-bold text-lg text-orange-300 mb-3">{{ card.devicename }}</h3>
           <div class="flex flex-col gap-3 w-full">
@@ -107,14 +108,14 @@
           </div>
         </div>
       </div>
-      <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
+      <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold mb-8">
         Please select a device to get started.
       </div>
 
 
       <!-- 🔸 Soil Temperature -->
-      <section class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-8 h-full">
-        <h2 class="text-2xl font-bold mb-6 text-orange-400">Soil Temperature</h2>
+      <section class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-8 h-full mb-8">
+        <h2 class="text-2xl font-bold mb-6 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">Soil Temperature</h2>
 
         <!-- Chart download buttons removed; only per-chart download remains -->
 
@@ -148,7 +149,7 @@
         v-if="soilRaw && soilRaw.length"
         class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-8"
       >
-        <h2 class="text-2xl font-bold mb-6 text-orange-400">CO₂ Levels</h2>
+        <h2 class="text-2xl font-bold mb-6 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">CO₂ Levels</h2>
         <div v-if="selected.length" class="p-4 rounded shadow border border-orange-500">
           <LineChart
             :chart-data="co2Data"

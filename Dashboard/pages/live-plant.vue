@@ -66,35 +66,35 @@
         </div>
       </div>
 
-      <!-- 🔹 Device Slicer -->
+    <!-- 🔹 Device Slicer -->
       <section class="  pl-0 mb-10">
-        <div class="flex items-center justify-between mb-2">
+  <div class="flex items-center justify-between mb-2">
           <label class="font-medium text-orange-300">Filter by Device(s)</label>
           <span class="text-sm text-orange-200">{{ selected.length }} selected</span>
-        </div>
-        <!-- Selected chips -->
-        <div class="flex flex-wrap gap-2 mb-3">
-          <span
-            v-for="d in selected"
-            :key="d"
+  </div>
+  <!-- Selected chips -->
+  <div class="flex flex-wrap gap-2 mb-3">
+    <span
+      v-for="d in selected"
+      :key="d"
             class="bg-orange-900 text-orange-200 px-3 py-0.5 rounded-full flex items-center animate-fade-in"
-          >
-            {{ d }}
-            <button
-              @click="remove(d)"
+    >
+      {{ d }}
+      <button
+        @click="remove(d)"
               class="ml-1 text-orange-400 hover:text-orange-200 focus:outline-none transition-colors duration-200"
-            >
-              ×
-            </button>
-          </span>
-          <button
-            v-if="selected.length"
-            @click="clearAll"
+      >
+        ×
+      </button>
+    </span>
+    <button
+      v-if="selected.length"
+      @click="clearAll"
             class="ml-auto text-sm text-orange-400 hover:underline"
-          >
+    >
             Clear All
-          </button>
-        </div>
+    </button>
+  </div>
         <!-- Modal Picker Trigger -->
         <button @click="showDeviceModal = true" class="w-full border border-orange-500 rounded p-2 bg-zinc-900 text-left text-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-colors duration-200">
           Select Devices
@@ -108,11 +108,11 @@
               <div class="flex justify-between mb-2">
                 <button @click="modalSelectAll" class="text-sm text-orange-400 hover:underline">Select All</button>
                 <button @click="modalClearAll" class="text-sm text-orange-400 hover:underline">Clear All</button>
-              </div>
+    </div>
               <div class="max-h-60 overflow-y-auto mb-4">
                 <div v-if="deviceNamesLoading" class="text-orange-300 text-sm py-2 flex items-center gap-2">
                   <span class="loader"></span> Loading devices...
-                </div>
+</div>
                 <template v-else>
                   <label v-for="d in filteredDevices" :key="d" class="flex items-center gap-2 py-1 cursor-pointer text-orange-100 hover:text-orange-400">
                     <input type="checkbox" :value="d" v-model="modalSelected" class="accent-orange-500" />
@@ -120,56 +120,73 @@
                   </label>
                   <div v-if="!filteredDevices.length" class="text-orange-300 text-sm py-2">No devices found.</div>
                 </template>
-              </div>
+</div>
               <div class="flex justify-end gap-3 mt-4">
                 <button @click="showDeviceModal = false" class="px-4 py-2 rounded bg-zinc-800 text-orange-200 hover:bg-zinc-700">Cancel</button>
                 <button @click="confirmDeviceModal" class="px-4 py-2 rounded bg-orange-600 text-white font-semibold hover:bg-orange-700">Confirm</button>
-              </div>
+</div>
               <button @click="showDeviceModal = false" class="absolute top-2 right-2 text-orange-400 hover:text-orange-200 text-xl">×</button>
-            </div>
-          </div>
+    </div>
+    </div>
         </transition>
       </section>
-
+    
       <!-- 📊 Moisture Summary Cards -->
       <section class="mb-12">
         <h2 class="text-xl font-semibold mb-4 text-orange-400">Moisture Summary</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+        <div v-if="selected.length" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <MoistureCard v-for="(device, index) in selected" :key="device + '-latest'" :device="device" :title="`${device} Latest`" :value="latestMoisture[device] ?? 0" :change="round(latestMoisture[device] - forecastValues[device]?.[29])" :changeLabel="'vs forecast'" :status="statusTag(latestMoisture[device])" :isForecast="false" class="transition-shadow hover:shadow-lg bg-zinc-900 border border-orange-500 text-orange-100 p-4" />
           <MoistureCard v-for="(device, index) in selected" :key="device + '-forecast'" :device="device" :title="`${device} Forecast Day 30`" :value="forecastValues[device]?.[29] ?? 0" :change="round(forecastValues[device]?.[29] - latestMoisture[device])" :changeLabel="'vs current'" :status="statusTag(forecastValues[device]?.[29])" :isForecast="true" class="transition-shadow hover:shadow-lg bg-zinc-900 border border-orange-500 text-orange-100 p-4" />
+        </div>
+        <div v-else class="w-full flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
+          Please select a device to get started.
         </div>
       </section>
 
       <!-- 📈 Historical Charts -->
-      <section v-if="selected.length" class="mb-12">
+      <section class="mb-12">
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Recent Soil Moisture Readings</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 justify-start items-start w-full">
-          <div v-for="(device, idx) in selected" :key="device + '-chart'" class="bg-zinc-900 p-8 rounded shadow-md hover:shadow-lg border border-orange-500 flex flex-col gap-2">
-            <div class="max-h-[320px] overflow-hidden">
-              <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-48" />
-            </div>
-            <div class="flex justify-between items-center mt-2 text-sm">
-              <span class="text-orange-200">Chart: Historical - {{ device }}</span>
-              <button @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)" class="text-orange-400 hover:underline">⬇ Download</button>
+        <template v-if="selected.length">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 justify-start items-start w-full">
+            <div v-for="(device, idx) in selected" :key="device + '-chart'" class="bg-zinc-900 p-8 rounded shadow-md hover:shadow-lg border border-orange-500 flex flex-col gap-2">
+              <div class="max-h-[320px] overflow-hidden">
+                <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-48" />
+              </div>
+              <div class="flex justify-between items-center mt-2 text-sm">
+                <span class="text-orange-200">Chart: Historical - {{ device }}</span>
+                <button @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)" class="text-orange-400 hover:underline">⬇ Download</button>
+              </div>
             </div>
           </div>
-        </div>
+        </template>
+        <template v-else>
+          <div class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
+            Please select a device to get started.
+          </div>
+        </template>
       </section>
 
       <!-- 📉 Forecast Chart -->
-      <section v-if="forecastChart" class="w-full mb-8 flex flex-col items-start">
+      <section class="w-full mb-8 flex flex-col items-start">
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Moisture Forecast (Next 30 Days)</h2>
-        <div class="bg-zinc-900 p-8 rounded shadow-md hover:shadow-lg border border-orange-500 w-full flex flex-col gap-2 max-w-full">
-          <div class="max-h-[340px] overflow-hidden">
-            <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-48 w-full" />
+        <template v-if="selected.length && forecastChart">
+          <div class="bg-zinc-900 p-8 rounded shadow-md hover:shadow-lg border border-orange-500 w-full flex flex-col gap-2 max-w-full">
+            <div class="max-h-[340px] overflow-hidden">
+              <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-48 w-full" />
+            </div>
+            <div class="flex justify-between items-center mt-2 text-sm">
+              <span class="text-orange-200">Chart: Forecast (30 Days)</span>
+              <button @click="downloadChartImage('forecast-chart', 'forecast-30day.png')" class="text-orange-400 hover:underline">⬇ Download</button>
+            </div>
           </div>
-          <div class="flex justify-between items-center mt-2 text-sm">
-            <span class="text-orange-200">Chart: Forecast (30 Days)</span>
-            <button @click="downloadChartImage('forecast-chart', 'forecast-30day.png')" class="text-orange-400 hover:underline">⬇ Download</button>
+        </template>
+        <template v-else>
+          <div class="w-full flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
+            Please select a device to get started.
           </div>
-        </div>
+        </template>
       </section>
-    </div>
+  </div>
   </div>
 </template>
 
