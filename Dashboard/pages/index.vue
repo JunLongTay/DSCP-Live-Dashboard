@@ -152,7 +152,12 @@
       <!-- 🔸 Soil Temperature -->
       <h2 class="text-2xl font-bold mb-6 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">Soil Temperature</h2>
       <div v-if="selected.length" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-        <div v-for="(device, idx) in selected" :key="device" class="p-4 rounded shadow border border-orange-500 bg-zinc-900">
+        <div
+          v-for="(device, idx) in selected"
+          :key="device"
+          class="p-4 rounded shadow border border-orange-500 bg-zinc-900 transition-transform duration-200 hover:scale-105 hover:shadow-2xl"
+          style="will-change: transform;"
+        >
           <LineChart
             :chart-data="soilChartDataSingleDevice(device, 'Soil Temp (°C)')"
             :chart-options="soilOptions"
@@ -178,12 +183,13 @@
 
       <!-- 🔸 CO₂ Chart (Actual Only) -->
       <h2 class="text-2xl font-bold mb-6 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">CO₂ Levels</h2>
-      <div v-if="selected.length" class="p-4 rounded shadow border border-orange-500 bg-zinc-900 mb-12">
+      <div v-if="selected.length" class="p-4 rounded shadow border border-orange-500 bg-zinc-900 mb-12 transition-transform duration-200 hover:scale-105 hover:shadow-2xl" style="will-change: transform;">
         <LineChart
           :chart-data="co2Data"
           :chart-options="co2Options"
           ref="co2Chart"
           id="co2-chart"
+          class="h-60"
         />
         <div class="mt-2 flex items-center justify-end w-full">
           <button
