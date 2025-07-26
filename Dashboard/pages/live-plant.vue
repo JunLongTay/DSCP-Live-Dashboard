@@ -148,7 +148,12 @@
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Recent Soil Moisture Readings</h2>
         <template v-if="selected.length">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-8 justify-start items-start w-full">
-            <div v-for="(device, idx) in selected" :key="device + '-chart'" class="bg-zinc-900 p-8 rounded shadow-md hover:shadow-lg border border-orange-500 flex flex-col gap-2">
+            <div
+              v-for="(device, idx) in selected"
+              :key="device + '-chart'"
+              class="bg-zinc-900 p-8 rounded shadow-md border border-orange-500 flex flex-col gap-2 transition-transform duration-200 hover:scale-105 hover:shadow-2xl"
+              style="will-change: transform;"
+            >
               <div class="max-h-[320px] overflow-hidden">
                 <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-48" />
               </div>
@@ -170,7 +175,10 @@
       <section class="w-full mb-8 flex flex-col items-start">
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Moisture Forecast (Next 30 Days)</h2>
         <template v-if="selected.length && forecastChart">
-          <div class="bg-zinc-900 p-8 rounded shadow-md hover:shadow-lg border border-orange-500 w-full flex flex-col gap-2 max-w-full">
+          <div
+            class="bg-zinc-900 p-8 rounded shadow-md border border-orange-500 w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:scale-105 hover:shadow-2xl"
+            style="will-change: transform;"
+          >
             <div class="max-h-[340px] overflow-hidden">
               <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-48 w-full" />
             </div>
