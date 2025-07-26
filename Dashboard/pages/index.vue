@@ -53,7 +53,7 @@
         <!-- Device Filter Modal -->
         <Transition name="fade">
           <div v-if="showDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md">
-            <div class="bg-zinc-900 border border-orange-500 rounded-lg shadow-lg p-6 w-full max-w-md relative animate-fade-in">
+            <div class="bg-zinc-900 border border-orange-500 rounded-lg shadow-lg p-6 w-full max-w-md relative">
               <button @click="showDeviceModal = false" class="absolute top-3 right-3 text-orange-400 text-xl font-bold">×</button>
               <h3 class="text-lg font-bold text-orange-300 mb-3">Select Devices</h3>
               <input v-model="deviceSearch" type="text" placeholder="Search devices..." class="w-full mb-3 p-2 border border-orange-500 rounded bg-zinc-800 text-orange-100 placeholder-orange-400" />
@@ -122,64 +122,54 @@
 
 
       <!-- 🔸 Soil Temperature -->
-      <section class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-8 h-full mb-8">
-        <h2 class="text-2xl font-bold mb-6 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">Soil Temperature</h2>
-
-        <!-- Chart download buttons removed; only per-chart download remains -->
-
-        <div v-if="selected.length" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div v-for="(device, idx) in selected" :key="device" class="p-4 rounded shadow border border-orange-500">
-            <LineChart
-              :chart-data="soilChartDataSingleDevice(device, 'Soil Temp (°C)')"
-              :chart-options="soilOptions"
-              class="h-60"
-              :ref="el => setSoilTempChartRef(el, idx)"
-              :id="`soil-temp-chart-${idx}`"
-            />
-            <div class="mt-2 flex items-center justify-between w-full">
-              <div class="text-center text-orange-400 font-semibold text-base">Chart: Soil Temp - {{ device }}</div>
-              <button
-                @click="downloadSingleSoilChart(idx, device)"
-                class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold ml-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" /></svg>
-                Download
-              </button>
-            </div>
-          </div>
-        </div>
-        <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
-          Please select a device to get started.
-        </div>
-      </section>
-
-      <!-- 🔸 CO₂ Chart (Actual Only) -->
-      <section
-        v-if="soilRaw && soilRaw.length"
-        class="bg-zinc-900 border border-orange-500 rounded-xl shadow-lg p-6 md:p-8 flex flex-col gap-8"
-      >
-        <h2 class="text-2xl font-bold mb-6 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">CO₂ Levels</h2>
-        <div v-if="selected.length" class="p-4 rounded shadow border border-orange-500">
+      <h2 class="text-2xl font-bold mb-6 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">Soil Temperature</h2>
+      <div v-if="selected.length" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <div v-for="(device, idx) in selected" :key="device" class="p-4 rounded shadow border border-orange-500 bg-zinc-900">
           <LineChart
-            :chart-data="co2Data"
-            :chart-options="co2Options"
-            ref="co2Chart"
-            id="co2-chart"
+            :chart-data="soilChartDataSingleDevice(device, 'Soil Temp (°C)')"
+            :chart-options="soilOptions"
+            class="h-60"
+            :ref="el => setSoilTempChartRef(el, idx)"
+            :id="`soil-temp-chart-${idx}`"
           />
-          <div class="mt-2 flex items-center justify-end w-full">
+          <div class="mt-2 flex items-center justify-between w-full">
+            <div class="text-center text-orange-400 font-semibold text-base">Chart: Soil Temp - {{ device }}</div>
             <button
-              @click="downloadChartImage('co2Chart')"
-              class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold"
+              @click="downloadSingleSoilChart(idx, device)"
+              class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold ml-2"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" /></svg>
               Download
             </button>
           </div>
         </div>
-        <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
-          Please select a device to get started.
+      </div>
+      <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
+        Please select a device to get started.
+      </div>
+
+      <!-- 🔸 CO₂ Chart (Actual Only) -->
+      <h2 class="text-2xl font-bold mb-6 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">CO₂ Levels</h2>
+      <div v-if="selected.length" class="p-4 rounded shadow border border-orange-500 bg-zinc-900 mb-12">
+        <LineChart
+          :chart-data="co2Data"
+          :chart-options="co2Options"
+          ref="co2Chart"
+          id="co2-chart"
+        />
+        <div class="mt-2 flex items-center justify-end w-full">
+          <button
+            @click="downloadChartImage('co2Chart')"
+            class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" /></svg>
+            Download
+          </button>
         </div>
-      </section>
+      </div>
+      <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
+        Please select a device to get started.
+      </div>
     </div>
   </div>
 </template>
