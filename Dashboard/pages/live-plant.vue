@@ -206,22 +206,23 @@
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Moisture Forecast (Next 30 Days)</h2>
         <template v-if="selected.length && forecastChart">
           <div
-            class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl"
+            class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl pt-6 pr-6"
             style="will-change: transform;"
           >
-            <div class="max-h-[340px] overflow-hidden">
+            <div class="flex justify-end items-center w-full">
+              <button
+                @click="downloadChartImage('forecast-chart', 'forecast-30day.png')"
+                class="flex items-center gap-2 px-3 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
+                </svg>
+                Download
+              </button>
+            </div>
+            <div class="max-h-[340px] overflow-hidden w-full">
               <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-64 w-full" />
             </div>
-            <!-- Download button in top right -->
-            <button
-              @click="downloadChartImage('forecast-chart', 'forecast-30day.png')"
-              class="absolute top-4 right-4 flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
-              </svg>
-              Download
-            </button>
           </div>
         </template>
         <template v-else>
