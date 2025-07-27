@@ -181,49 +181,46 @@
                 {{ card[nutrient as keyof typeof card] }} {{ NPK_UNIT }}
               </span>
             </div>
-            <!-- Gauge bar (redesigned) -->
+            <!-- Gauge bar (consistent color zones for all cards/charts) -->
             <div class="flex-1 flex flex-col items-center min-w-0">
-              <div
-                class="w-full h-2 relative flex items-center rounded overflow-hidden"
-                style="background: linear-gradient(to right, #f87171 0%, #22c55e 33%, #22c55e 66%, #f87171 100%);"
-                :title="`${nutrient.charAt(0).toUpperCase() + nutrient.slice(1)} optimal range: ${NPK_THRESHOLDS[nutrient as NPKKey].low}–${NPK_THRESHOLDS[nutrient as NPKKey].high} ppm`"
-              >
-                <!-- Progress fill (actual value) -->
+              <div class="w-full h-2 rounded-full overflow-hidden relative bg-gradient-to-r from-yellow-400 via-green-500 to-red-500">
+                <!-- Value marker -->
                 <div
-                  class="absolute top-0 left-0 h-full"
+                  class="absolute top-0 h-full rounded-full"
                   :style="{
+                    left: 0,
                     width: `${Math.min(100, Math.max(0,
-                      ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].low)
-                        / (NPK_THRESHOLDS[nutrient as NPKKey].high - NPK_THRESHOLDS[nutrient as NPKKey].low))
-                      * 100
+                      ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].low) /
+                        (NPK_THRESHOLDS[nutrient as NPKKey].high - NPK_THRESHOLDS[nutrient as NPKKey].low)
+                      ) * 100
                     ))}%`,
                     background: npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) === 'Optimal'
                       ? '#22c55e'
                       : npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) === 'Low'
                         ? '#facc15'
                         : '#f87171',
-                    borderRadius: '4px'
+                    opacity: 0.7
                   }"
                 ></div>
                 <!-- Threshold markers -->
                 <div
-                  class="absolute left-0 top-0 h-full w-0.5 bg-orange-400"
+                  class="absolute top-0 h-full w-0.5 bg-orange-400"
                   :style="{ left: '0%' }"
                   title="Min threshold"
                 ></div>
                 <div
-                  class="absolute right-0 top-0 h-full w-0.5 bg-orange-400"
-                  :style="{ right: '0%' }"
+                  class="absolute top-0 h-full w-0.5 bg-orange-400"
+                  :style="{ left: '100%' }"
                   title="Max threshold"
                 ></div>
-                <!-- Value marker -->
+                <!-- Value indicator -->
                 <div
-                  class="absolute top-0 h-full w-0.5"
+                  class="absolute top-0 h-full w-1"
                   :style="{
                     left: `${Math.min(100, Math.max(0,
-                      ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].low)
-                        / (NPK_THRESHOLDS[nutrient as NPKKey].high - NPK_THRESHOLDS[nutrient as NPKKey].low))
-                      * 100
+                      ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].low) /
+                        (NPK_THRESHOLDS[nutrient as NPKKey].high - NPK_THRESHOLDS[nutrient as NPKKey].low)
+                      ) * 100
                     ))}%`,
                     background: '#fff'
                   }"
@@ -236,44 +233,22 @@
                 <span>Optimal</span>
                 <span>High</span>
               </div>
-              <!-- Conditional messaging below bar (logic from image) -->
+              <!-- Conditional messaging below bar (unchanged) -->
               <div class="text-[11px] font-semibold mt-1"
                 :class="{
-                  'text-green-500': Number(card[nutrient as NPKKey]) === NPK_THRESHOLDS[nutrient as NPKKey].high
-                    || (Number(card[nutrient as NPKKey]) > NPK_THRESHOLDS[nutrient as NPKKey].low && Number(card[nutrient as NPKKey]) < NPK_THRESHOLDS[nutrient as NPKKey].high),
-                  'text-orange-400': (
-                    (Number(card[nutrient as NPKKey]) > NPK_THRESHOLDS[nutrient as NPKKey].high && ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].high) / NPK_THRESHOLDS[nutrient as NPKKey].high) * 100 <= 5)
-                    || (Number(card[nutrient as NPKKey]) < NPK_THRESHOLDS[nutrient as NPKKey].low)
-                  ),
-                  'text-red-500': Number(card[nutrient as NPKKey]) > NPK_THRESHOLDS[nutrient as NPKKey].high && ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].high) / NPK_THRESHOLDS[nutrient as NPKKey].high) * 100 > 5,
+                  'text-green-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) === 'Optimal',
+                  'text-yellow-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) === 'Low',
+                  'text-red-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) === 'High'
                 }"
               >
-                <template v-if="Number(card[nutrient as NPKKey]) > NPK_THRESHOLDS[nutrient as NPKKey].high">
-                  <template v-if="((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].high) / NPK_THRESHOLDS[nutrient as NPKKey].high) * 100 <= 5">
-                    ⚠️ Slightly high – exceeds optimal by {{
-          ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].high) / NPK_THRESHOLDS[nutrient as NPKKey].high * 100).toFixed(1)
-        }}%
-                  </template>
-                  <template v-else>
-                    🔴 Too high – exceeds optimal by {{
-          ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].high) / NPK_THRESHOLDS[nutrient as NPKKey].high * 100).toFixed(1)
-        }}%
-                  </template>
+                <template v-if="npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) === 'Optimal'">
+                  ✅ In optimal range
                 </template>
-                <template v-else-if="Number(card[nutrient as NPKKey]) < NPK_THRESHOLDS[nutrient as NPKKey].low">
-                  🟠 Too low – below optimal by {{
-        ((NPK_THRESHOLDS[nutrient as NPKKey].low - Number(card[nutrient as NPKKey])) / NPK_THRESHOLDS[nutrient as NPKKey].low * 100).toFixed(1)
-      }}%
-                </template>
-                <template v-else-if="Number(card[nutrient as NPKKey]) === NPK_THRESHOLDS[nutrient as NPKKey].high">
-                  🟢 Perfect – at optimal limit
+                <template v-else-if="npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) === 'Low'">
+                  🟠 Too low
                 </template>
                 <template v-else>
-                  ✅ In optimal range ({{
-        ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].low) /
-          (NPK_THRESHOLDS[nutrient as NPKKey].high - NPK_THRESHOLDS[nutrient as NPKKey].low) * 100
-        ).toFixed(0)
-      }}% in zone)
+                  🔴 Too high
                 </template>
               </div>
             </div>
@@ -816,7 +791,8 @@ const filteredCo2Raw = computed(() => {
 
 // CO2 chart: only actual lines for each device
 const co2Data = computed<ChartData<'line'>>(() => {
-  let devices = co2ChartDevices.value.length ? co2ChartDevices.value : (selected.value.length ? selected.value : Array.from(new Set(co2Raw.value.map(r => r.devicename))))
+  // Use selected devices only
+  const devices = co2ChartDevices.value.length ? co2ChartDevices.value : Array.from(new Set(co2Raw.value.map(r => r.devicename)));
   // Collect all timestamps for x-axis
   const allTimestamps = Array.from(new Set(co2Raw.value.map(r => r.timestamp))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
   const labels = allTimestamps.map(ts => {
@@ -1104,7 +1080,7 @@ function remove(dev: string) { selected.value = selected.value.filter(d => d !==
 function clearAll() { selected.value = [] }
 
 // State for CO₂ chart device filter
-const co2ChartDevices = ref<string[]>([])
+const co2ChartDevices = ref<string[]>([]);
 
 // Initialize with all selected devices
 watchEffect(() => {
@@ -1128,15 +1104,10 @@ function toggleCo2Device(dev: string) {
 
 // Color palette for device pills and CO₂ chart lines
 const co2DeviceColors = [
-  '#f77c05', // orange
-  '#3b82f6', // blue
-  '#facc15', // yellow
-  '#22c55e', // green
-  '#a855f7', // purple
-  '#f87171', // red
-  '#14b8a6', // teal
-  '#eab308', // amber
-  // add more if needed
+  '#facc15', // yellow (low)
+  '#22c55e', // green (optimal)
+  '#f87171', // red (high)
+  // ...add more if needed, but keep first three as yellow, green, red for consistency
 ]
 
 // Map device name to color based on its index in selected
@@ -1233,5 +1204,6 @@ h1, h2, h3, h4, h5, h6 {
     0 2px 16px #0004;
 }
 </style>
+
 
 
