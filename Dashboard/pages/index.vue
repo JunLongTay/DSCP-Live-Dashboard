@@ -137,7 +137,7 @@
           v-for="card in avgPerDevice"
           :key="card.devicename"
           class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
-                 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col"
+                 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
           style="will-change: transform;"
         >
           <!-- Header -->
@@ -181,24 +181,100 @@
                 {{ card[nutrient as keyof typeof card] }} {{ NPK_UNIT }}
               </span>
             </div>
-            <!-- Gauge bar -->
-            <div class="flex-1 flex items-center min-w-0">
-              <div class="w-full h-2 bg-gray-900 rounded overflow-hidden flex items-center">
+            <!-- Gauge bar (redesigned) -->
+            <div class="flex-1 flex flex-col items-center min-w-0">
+              <div
+                class="w-full h-2 relative flex items-center rounded overflow-hidden"
+                style="background: linear-gradient(to right, #f87171 0%, #22c55e 33%, #22c55e 66%, #f87171 100%);"
+                :title="`${nutrient.charAt(0).toUpperCase() + nutrient.slice(1)} optimal range: ${NPK_THRESHOLDS[nutrient as NPKKey].low}–${NPK_THRESHOLDS[nutrient as NPKKey].high} ppm`"
+              >
+                <!-- Progress fill (actual value) -->
                 <div
-                  class="h-full rounded transition-all duration-700"
-                  :class="{
-                    'bg-green-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Optimal',
-                    'bg-yellow-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Low',
-                    'bg-red-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='High'
-                  }"
+                  class="absolute top-0 left-0 h-full"
                   :style="{
                     width: `${Math.min(100, Math.max(0,
                       ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].low)
                         / (NPK_THRESHOLDS[nutrient as NPKKey].high - NPK_THRESHOLDS[nutrient as NPKKey].low))
                       * 100
-                    ))}%`
+                    ))}%`,
+                    background: npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) === 'Optimal'
+                      ? '#22c55e'
+                      : npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) === 'Low'
+                        ? '#facc15'
+                        : '#f87171',
+                    borderRadius: '4px'
                   }"
                 ></div>
+                <!-- Threshold markers -->
+                <div
+                  class="absolute left-0 top-0 h-full w-0.5 bg-orange-400"
+                  :style="{ left: '0%' }"
+                  title="Min threshold"
+                ></div>
+                <div
+                  class="absolute right-0 top-0 h-full w-0.5 bg-orange-400"
+                  :style="{ right: '0%' }"
+                  title="Max threshold"
+                ></div>
+                <!-- Value marker -->
+                <div
+                  class="absolute top-0 h-full w-0.5"
+                  :style="{
+                    left: `${Math.min(100, Math.max(0,
+                      ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].low)
+                        / (NPK_THRESHOLDS[nutrient as NPKKey].high - NPK_THRESHOLDS[nutrient as NPKKey].low))
+                      * 100
+                    ))}%`,
+                    background: '#fff'
+                  }"
+                  title="Current value"
+                ></div>
+              </div>
+              <!-- Range labels below bar -->
+              <div class="w-full flex justify-between text-[10px] text-orange-300 mt-1 px-1">
+                <span>Low</span>
+                <span>Optimal</span>
+                <span>High</span>
+              </div>
+              <!-- Conditional messaging below bar (logic from image) -->
+              <div class="text-[11px] font-semibold mt-1"
+                :class="{
+                  'text-green-500': Number(card[nutrient as NPKKey]) === NPK_THRESHOLDS[nutrient as NPKKey].high
+                    || (Number(card[nutrient as NPKKey]) > NPK_THRESHOLDS[nutrient as NPKKey].low && Number(card[nutrient as NPKKey]) < NPK_THRESHOLDS[nutrient as NPKKey].high),
+                  'text-orange-400': (
+                    (Number(card[nutrient as NPKKey]) > NPK_THRESHOLDS[nutrient as NPKKey].high && ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].high) / NPK_THRESHOLDS[nutrient as NPKKey].high) * 100 <= 5)
+                    || (Number(card[nutrient as NPKKey]) < NPK_THRESHOLDS[nutrient as NPKKey].low)
+                  ),
+                  'text-red-500': Number(card[nutrient as NPKKey]) > NPK_THRESHOLDS[nutrient as NPKKey].high && ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].high) / NPK_THRESHOLDS[nutrient as NPKKey].high) * 100 > 5,
+                }"
+              >
+                <template v-if="Number(card[nutrient as NPKKey]) > NPK_THRESHOLDS[nutrient as NPKKey].high">
+                  <template v-if="((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].high) / NPK_THRESHOLDS[nutrient as NPKKey].high) * 100 <= 5">
+                    ⚠️ Slightly high – exceeds optimal by {{
+          ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].high) / NPK_THRESHOLDS[nutrient as NPKKey].high * 100).toFixed(1)
+        }}%
+                  </template>
+                  <template v-else>
+                    🔴 Too high – exceeds optimal by {{
+          ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].high) / NPK_THRESHOLDS[nutrient as NPKKey].high * 100).toFixed(1)
+        }}%
+                  </template>
+                </template>
+                <template v-else-if="Number(card[nutrient as NPKKey]) < NPK_THRESHOLDS[nutrient as NPKKey].low">
+                  🟠 Too low – below optimal by {{
+        ((NPK_THRESHOLDS[nutrient as NPKKey].low - Number(card[nutrient as NPKKey])) / NPK_THRESHOLDS[nutrient as NPKKey].low * 100).toFixed(1)
+      }}%
+                </template>
+                <template v-else-if="Number(card[nutrient as NPKKey]) === NPK_THRESHOLDS[nutrient as NPKKey].high">
+                  🟢 Perfect – at optimal limit
+                </template>
+                <template v-else>
+                  ✅ In optimal range ({{
+        ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].low) /
+          (NPK_THRESHOLDS[nutrient as NPKKey].high - NPK_THRESHOLDS[nutrient as NPKKey].low) * 100
+        ).toFixed(0)
+      }}% in zone)
+                </template>
               </div>
             </div>
           </div>
@@ -235,8 +311,8 @@
         <div
           v-for="(device, idx) in selected"
           :key="device"
-          class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-4
-                 transition-transform duration-200 hover:scale-105 hover:shadow-2xl"
+          class="bg-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
+         transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
           style="will-change: transform;"
         >
           <!-- Chart Header with pill toggles -->
@@ -312,7 +388,7 @@
           {{ device }}
         </span>
       </div>
-      <div v-if="selected.length" class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-4 mb-12 transition-transform duration-200 hover:scale-105 hover:shadow-2xl" style="will-change: transform;">
+      <div v-if="selected.length" class="bg-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6 mb-12 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow" style="will-change: transform;">
         <!-- Chart Header with download button aligned right -->
         <div class="flex items-center justify-between mb-2">
           <div></div>
@@ -927,13 +1003,11 @@ async function downloadFullReport() {
   const allRows = Object.values(merged)
 
   // Export as CSV
-  downloadBlob(
-    'full_report.csv',
-    toCSV(
-      allRows,
-      ['timestamp', 'devicename', 'nitrogen', 'phosphorus', 'potassium', 'soil_temp', 'co2']
-    )
-  )
+  const csvContent = toCSV(
+    allRows,
+    ['timestamp', 'devicename', 'nitrogen', 'phosphorus', 'potassium', 'soil_temp', 'co2']
+  );
+  downloadBlob('full_report.csv', csvContent);
 }
 
 
@@ -1137,12 +1211,27 @@ h1, h2, h3, h4, h5, h6 {
   cursor: pointer;
 }
 .co2-pill {
+  border-style: solid;
+  box-shadow: 0 0 0 1.5px #fff2;
   cursor: pointer;
-  transition: box-shadow 0.2s, opacity 0.2s;
 }
 .co2-pill:hover {
   box-shadow: 0 0 0 2px #fff3, 0 2px 8px #0002;
   opacity: 1;
 }
+.orange-glow {
+  box-shadow:
+    0 2px 16px 0 #ea580c33,
+    0 0 0 1.5px #fff2,
+    0 1px 8px #0002;
+  transition: box-shadow 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+.orange-glow:hover {
+  box-shadow:
+    0 4px 32px 0 #ea580c66,
+    0 0 0 2px #ea580c99,
+    0 2px 16px #0004;
+}
 </style>
+
 
