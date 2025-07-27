@@ -181,26 +181,6 @@
                 {{ card[nutrient as keyof typeof card] }} {{ NPK_UNIT }}
               </span>
             </div>
-            <!-- Gauge bar -->
-            <div class="flex-1 flex items-center min-w-0">
-              <div class="w-full h-2 bg-gray-900 rounded overflow-hidden flex items-center">
-                <div
-                  class="h-full rounded transition-all duration-700"
-                  :class="{
-                    'bg-green-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Optimal',
-                    'bg-yellow-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Low',
-                    'bg-red-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='High'
-                  }"
-                  :style="{
-                    width: `${Math.min(100, Math.max(0,
-                      ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].low)
-                        / (NPK_THRESHOLDS[nutrient as NPKKey].high - NPK_THRESHOLDS[nutrient as NPKKey].low))
-                      * 100
-                    ))}%`
-                  }"
-                ></div>
-              </div>
-            </div>
           </div>
           <!-- Recommendations accordion -->
           <details class="mt-auto bg-zinc-900 border border-orange-700 rounded-lg">
@@ -1072,4 +1052,7 @@ h1, h2, h3, h4, h5, h6 {
   cursor: pointer;
 }
 </style>
+  stroke: #fff;
+}
+
 
