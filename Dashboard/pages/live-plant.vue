@@ -180,7 +180,16 @@
               </div>
               <div class="flex justify-between items-center mt-2 text-sm">
                 <span class="text-orange-200">Chart: Historical - {{ device }}</span>
-                <button @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)" class="text-orange-400 hover:underline">⬇ Download</button>
+                <!-- Standardised Download Button (same as index.vue) -->
+                <button
+                  @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)"
+                  class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
+                  </svg>
+                  Download
+                </button>
               </div>
             </div>
           </div>
@@ -205,7 +214,16 @@
             </div>
             <div class="flex justify-between items-center mt-2 text-sm">
               <span class="text-orange-200">Chart: Forecast (30 Days)</span>
-              <button @click="downloadChartImage('forecast-chart', 'forecast-30day.png')" class="text-orange-400 hover:underline">⬇ Download</button>
+              <!-- Standardised Download Button (same as index.vue) -->
+              <button
+                @click="downloadChartImage('forecast-chart', 'forecast-30day.png')"
+                class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
+                </svg>
+                Download
+              </button>
             </div>
           </div>
         </template>
@@ -667,6 +685,13 @@ watchEffect(() => {
   if (showDeviceModal.value) {
     modalSelected.value = [...selected.value]
   }
+})
+
+// Remove localStorage persistence for selected devices
+watchEffect(() => {
+  // Only restore from localStorage if you want persistence
+  // To disable persistence, simply do nothing here
+  // (Or, if you want to clear selection on reload, set selected.value = [])
 })
 
 // Set loading to false when all main data is loaded

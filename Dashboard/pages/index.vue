@@ -130,64 +130,70 @@
     </div>
 
       <!-- 🔹 Average NPK Levels -->
-      <h2 class="text-2xl font-bold mb-4 text-orange-400 font-roboto-slab">
-        Average NPK Levels
-      </h2>
+      <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Average NPK Levels</h2>
       <div v-if="selected.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <div
           v-for="card in avgPerDevice"
           :key="card.devicename"
-          class="bg-zinc-800 border border-orange-700 rounded-lg p-6
-                 transform hover:-translate-y-1 hover:shadow-2xl
-                 transition-transform duration-200 flex flex-col"
+          class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
+                 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col"
+          style="will-change: transform;"
         >
           <!-- Header -->
           <h3 class="text-xl font-semibold text-orange-300 mb-4 text-center">
             {{ card.devicename }}
           </h3>
           <!-- Nutrient rows -->
-          <template v-for="key in ['nitrogen','phosphorus','potassium']" :key="key">
-            <div class="mb-4">
-              <div class="flex justify-between items-center mb-1">
-                <span class="text-sm font-medium text-orange-300 capitalize">
-                  {{ key }}
-                </span>
-                <div class="flex items-center space-x-2">
-                  <span class="text-2xl font-bold text-orange-400">
-                    {{ card[key as keyof typeof card] }} {{ NPK_UNIT }}
-                  </span>
-                  <span
-                    class="px-2 py-0.5 text-xs font-semibold rounded-full transition-colors duration-150 cursor-pointer"
-                    :class="{
-                      'bg-green-100 text-green-800 hover:bg-green-200': npkStatus(key as NPKKey, card[key as keyof typeof card]),
-                      'bg-yellow-100 text-yellow-800 hover:bg-yellow-200': npkStatus(key as NPKKey, card[key as keyof typeof card])==='Low',
-                      'bg-red-100 text-red-800 hover:bg-red-200': npkStatus(key as NPKKey, card[key as keyof typeof card])==='High'
-                    }"
-                  >
-                    {{ npkStatus(key as NPKKey, card[key as keyof typeof card]) }}
-                  </span>
-                </div>
-              </div>
-              <!-- Gauge bar -->
-              <div class="w-full h-2 bg-gray-900 rounded overflow-hidden">
+          <div v-for="nutrient in ['nitrogen','phosphorus','potassium']" :key="nutrient" class="mb-6 flex items-center gap-4">
+            <!-- Status bar/glyph -->
+            <div class="flex flex-col items-center w-16 flex-shrink-0">
+              <div
+                class="w-2 h-10 rounded-full"
+                :class="{
+                  'bg-green-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Optimal',
+                  'bg-yellow-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Low',
+                  'bg-red-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='High'
+                }"
+                :style="{
+                  height: '40px',
+                  transition: 'height 0.8s cubic-bezier(0.4,0,0.2,1)',
+                  boxShadow: npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])!=='Optimal' ? '0 0 8px 2px #f87171' : ''
+                }"
+              ></div>
+              <span class="mt-1 text-xs text-zinc-400 font-semibold">
+                {{ npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) }}
+              </span>
+            </div>
+            <!-- Value & label -->
+            <div class="flex-1 flex flex-col min-w-0">
+              <span class="text-sm font-medium text-orange-300 capitalize mb-1" style="opacity:0.8;">
+                {{ nutrient }}
+              </span>
+              <span class="text-3xl font-bold text-orange-400 leading-tight">
+                {{ card[nutrient as keyof typeof card] }} {{ NPK_UNIT }}
+              </span>
+            </div>
+            <!-- Gauge bar -->
+            <div class="flex-1 flex items-center min-w-0">
+              <div class="w-full h-2 bg-gray-900 rounded overflow-hidden flex items-center">
                 <div
-                  class="h-full rounded"
+                  class="h-full rounded transition-all duration-700"
                   :class="{
-                    'bg-green-500': npkStatus(key as NPKKey, card[key as keyof typeof card])==='Optimal',
-                    'bg-yellow-500': npkStatus(key as NPKKey, card[key as keyof typeof card])==='Low',
-                    'bg-red-500': npkStatus(key as NPKKey, card[key as keyof typeof card])==='High'
+                    'bg-green-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Optimal',
+                    'bg-yellow-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Low',
+                    'bg-red-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='High'
                   }"
                   :style="{
                     width: `${Math.min(100, Math.max(0,
-                      ((Number(card[key as keyof typeof card]) - NPK_THRESHOLDS[key as NPKKey].low)
-                        / (NPK_THRESHOLDS[key as NPKKey].high - NPK_THRESHOLDS[key as NPKKey].low))
+                      ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].low)
+                        / (NPK_THRESHOLDS[nutrient as NPKKey].high - NPK_THRESHOLDS[nutrient as NPKKey].low))
                       * 100
                     ))}%`
                   }"
                 ></div>
               </div>
             </div>
-          </template>
+          </div>
           <!-- Recommendations accordion -->
           <details class="mt-auto bg-zinc-900 border border-orange-700 rounded-lg">
             <summary
@@ -201,9 +207,10 @@
               </svg>
               Recommendations
             </summary>
-            <ul class="p-4 list-disc list-inside text-sm text-orange-200 space-y-2">
-              <li v-for="note in npkRecommendations[card.devicename]" :key="note">
-                {{ note }}
+            <ul class="p-4 list-none text-sm text-orange-200 space-y-2">
+              <li v-for="note in npkRecommendations[card.devicename].split('. ')" :key="note" class="flex items-start gap-2">
+                <span class="text-lg">•</span>
+                <span>{{ note }}</span>
               </li>
             </ul>
           </details>
@@ -220,40 +227,26 @@
         <div
           v-for="(device, idx) in selected"
           :key="device"
-          class="bg-zinc-900 rounded-xl shadow-xl transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col"
+          class="p-4 rounded shadow border border-orange-500 bg-zinc-900 transition-transform duration-200 hover:scale-105 hover:shadow-2xl"
           style="will-change: transform;"
         >
-          <!-- Header strip -->
-          <div class="flex items-center justify-between bg-gradient-to-r from-orange-500 to-orange-400 rounded-t-xl px-6 py-3">
-            <span class="font-semibold text-white text-base">Soil Temperature – {{ device }}</span>
+          <LineChart
+            :chart-data="soilChartDataSingleDevice(device, 'Soil Temp (°C)')"
+            :chart-options="soilOptions"
+            class="h-60"
+            :ref="el => setSoilTempChartRef(el, idx)"
+            :id="`soil-temp-chart-${idx}`"
+          />
+          <div class="mt-2 flex items-center justify-between w-full">
+            <div class="text-center text-orange-400 font-semibold text-base">Chart: Soil Temp - {{ device }}</div>
+            <!-- Standardised Download Button -->
             <button
               @click="downloadSingleSoilChart(idx, device)"
-              class="flex items-center justify-center h-11 w-11 rounded-full bg-orange-600 hover:bg-orange-700 transition"
-              aria-label="Download chart"
+              class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" /></svg>
+              Download
             </button>
-          </div>
-          <!-- Chart area -->
-          <div class="p-6">
-            <LineChart
-              :chart-data="soilChartDataSingleDevice(device, 'Soil Temp (°C)')"
-              :chart-options="soilOptions"
-              class="h-60"
-              :ref="el => setSoilTempChartRef(el, idx)"
-              :id="`soil-temp-chart-${idx}`"
-            />
-            <!-- Collapsible legend -->
-            <details class="mt-4">
-              <summary class="text-orange-300 cursor-pointer font-medium">Legend ⚙️</summary>
-              <div class="mt-2 flex flex-col gap-2 text-sm text-orange-100">
-                <span><span class="inline-block w-4 h-2 bg-orange-500 mr-2"></span>Actual</span>
-                <span><span class="inline-block w-4 h-2 bg-blue-500 mr-2"></span>Smoothed</span>
-                <span><span class="inline-block w-4 h-2 bg-yellow-500 mr-2 border-dashed border-b-2 border-yellow-400"></span>Average</span>
-              </div>
-            </details>
           </div>
         </div>
       </div>
@@ -327,7 +320,19 @@ interface SoilReading { timestamp: string; soil_temp: number | null; devicename:
 interface CO2Reading   { timestamp: string; co2: number | null; devicename: string;  }
 
 /* ── State ───────────────────────── */
+const SELECTED_DEVICES_KEY = 'dashboard_selected_devices'
 const selected = ref<string[]>([])
+
+// Make device names reactive
+const allDeviceNamesRaw = ref<string[]>([])
+
+onMounted(async () => {
+  try {
+    allDeviceNamesRaw.value = await $fetch<string[]>('http://localhost:3001/np-devices')
+  } catch {
+    allDeviceNamesRaw.value = []
+  }
+})
 
 /* ── NPK helpers ─────────────────── */
 // 1) Re‑use your existing thresholds & status function
@@ -411,31 +416,45 @@ const avgPerDevice = computed(() => {
   })
 })
 
-// 2) Build compost‑specific recommendations
-const npkRecommendations = computed<Record<string,string[]>>(() => {
-  const recs: Record<string,string[]> = {}
+// Computed recommendations based on NPK levels
+const npkRecommendations = computed<Record<string,string>>(() => {
+  const recs: Record<string,string> = {}
+
   avgPerDevice.value.forEach(card => {
     const notes: string[] = []
-    const n = npkStatus('nitrogen',   card.nitrogen)
-    const p = npkStatus('phosphorus', card.phosphorus)
-    const k = npkStatus('potassium',  card.potassium)
+    const name = card.devicename
+    const nStatus = npkStatus('nitrogen',   card.nitrogen)
+    const pStatus = npkStatus('phosphorus', card.phosphorus)
+    const kStatus = npkStatus('potassium',  card.potassium)
 
-    if (n === 'Low')  notes.push('➕ Add more greens (vegetable scraps, coffee grounds) to boost nitrogen.')
-    if (n === 'High') notes.push('➖ Mix in more browns (dried leaves, straw) to balance nitrogen.')
+    // Nitrogen
+    if (nStatus === 'Low') {
+      notes.push('🟢 Low N: Add more green compost materials (vegetable scraps, coffee grounds, fresh grass clippings).')
+    } else if (nStatus === 'High') {
+      notes.push('🟠 High N: Mix in more brown materials (dried leaves, straw, shredded paper) to balance.')
+    }
 
-    if (p === 'Low')  notes.push('➕ Toss in bone meal or eggshells for phosphorus.')
-    if (p === 'High') notes.push('➖ Cut back on poultry manure; add carbon‑rich browns.')
+    // Phosphorus
+    if (pStatus === 'Low') {
+      notes.push('🟢 Low P: Toss in bone meal or crushed eggshells to boost phosphorus levels.')
+    } else if (pStatus === 'High') {
+      notes.push('🟠 High P: Reduce high‑P inputs (e.g. poultry manure) and add carbon‑rich browns.')
+    }
 
-    if (k === 'Low')  notes.push('➕ Include banana peels or wood ash for potassium.')
-    if (k === 'High') notes.push('➖ Reduce wood ash; mix in more greens or browns without K.')
+    // Potassium
+    if (kStatus === 'Low') {
+      notes.push('🟢 Low K: Add wood ash or banana peels for a potassium boost.')
+    } else if (kStatus === 'High') {
+      notes.push('🟠 High K: Cut back on wood ash; mix in more greens or browns without K.')
+    }
 
-    recs[card.devicename] = notes.length
-      ? notes
-      : ['✅ All nutrients are in the optimal range for healthy composting.']
+    recs[name] = notes.length
+      ? notes.join(' ')
+      : '✅ All nutrients are in good range for healthy composting.'
   })
+
   return recs
 })
-
 /* ── Soil helpers ─────────────────── */
 const TEMP_RANGE  = { low: 25, high: 32 }
 
@@ -835,13 +854,9 @@ const co2Chart = ref<ChartComponentRef | null>(null)
 
 
 /* ── Device slicer ─────────────────── */
-const allDeviceNamesRaw = await $fetch<string[]>(
-  'http://localhost:3001/np-devices'
-)
-
-const options = computed(() => allDeviceNamesRaw.filter(d => !selected.value.includes(d)))
+const options = computed(() => allDeviceNamesRaw.value.filter(d => !selected.value.includes(d)))
 const allSelected = computed(() =>
-  allDeviceNamesRaw.length > 0 && selected.value.length === allDeviceNamesRaw.length
+  allDeviceNamesRaw.value.length > 0 && selected.value.length === allDeviceNamesRaw.value.length
 )
 
 // Modal filter state
@@ -851,8 +866,8 @@ const modalSelected = ref<string[]>([])
 
 const filteredDeviceOptions = computed(() => {
   const search = deviceSearch.value.trim().toLowerCase()
-  if (!search) return allDeviceNamesRaw
-  return allDeviceNamesRaw.filter(d => d.toLowerCase().includes(search))
+  if (!search) return allDeviceNamesRaw.value
+  return allDeviceNamesRaw.value.filter(d => d.toLowerCase().includes(search))
 })
 
 function selectAllDevices() {
@@ -905,3 +920,4 @@ h1, h2, h3, h4, h5, h6 {
   animation: fade-in 0.8s cubic-bezier(0.4,0,0.2,1);
 }
 </style>
+
