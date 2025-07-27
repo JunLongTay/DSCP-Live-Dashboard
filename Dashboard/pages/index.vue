@@ -215,8 +215,8 @@
         <div
           v-for="(device, idx) in selected"
           :key="device"
-          class="bg-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
-         transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
+          class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
+           transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
           style="will-change: transform;"
         >
           <!-- Chart Header with pill toggles -->
@@ -275,27 +275,27 @@
 
       <!-- 🔸 CO₂ Chart (Actual Only) -->
       <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">CO₂ Levels</h2>
-      <!-- Pills for CO₂ devices -->
-      <div v-if="selected.length" class="flex flex-wrap gap-2 mb-2">
-        <span
-          v-for="(device, idx) in selected"
-          :key="device"
-          class="co2-pill inline-flex items-center px-4 py-1 rounded-full font-medium text-sm"
-          :style="{
-            background: co2DeviceColorMap[device],
-            color: '#fff',
-            border: `2px solid ${co2DeviceColorMap[device]}`,
-            opacity: co2ChartDevices.includes(device) ? 1 : 0.5
-          }"
-          @click="toggleCo2Device(device)"
-        >
-          {{ device }}
-        </span>
-      </div>
-      <div v-if="selected.length" class="bg-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6 mb-12 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow" style="will-change: transform;">
-        <!-- Chart Header with download button aligned right -->
+      <div v-if="selected.length"
+        class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6 mb-12 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
+        style="will-change: transform;">
+        <!-- Pills and Download button aligned in one row -->
         <div class="flex items-center justify-between mb-2">
-          <div></div>
+          <div class="flex flex-wrap gap-2">
+            <span
+              v-for="(device, idx) in selected"
+              :key="device"
+              class="co2-pill inline-flex items-center px-4 py-1 rounded-full font-medium text-sm"
+              :style="{
+                background: co2DeviceColorMap[device],
+                color: '#fff',
+                border: `2px solid ${co2DeviceColorMap[device]}`,
+                opacity: co2ChartDevices.includes(device) ? 1 : 0.5
+              }"
+              @click="toggleCo2Device(device)"
+            >
+              {{ device }}
+            </span>
+          </div>
           <button
             @click="downloadChartImage('co2Chart')"
             class="download-btn flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-700 hover:text-white transition-colors"
@@ -729,7 +729,7 @@ const co2Data = computed<ChartData<'line'>>(() => {
     return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
   })
   // Build dataset for each device
-  const datasets = devices.map((device, idx) => {
+  const datasets = devices.map((device) => {
     const deviceData = co2Raw.value.filter(r => r.devicename === device)
     // Map to all timestamps
     const dataMap = Object.fromEntries(deviceData.map(r => [r.timestamp, r.co2 ?? null]))
@@ -737,7 +737,7 @@ const co2Data = computed<ChartData<'line'>>(() => {
     return {
       label: `${device} CO₂ (Actual) (${CO2_UNIT})`,
       data: values,
-      borderColor: co2DeviceColors[idx % co2DeviceColors.length],
+      borderColor: co2DeviceColorMap.value[device], // <-- use color map by device name
       pointRadius: 6,
       fill: false
     }
@@ -1133,7 +1133,5 @@ h1, h2, h3, h4, h5, h6 {
     0 2px 16px #0004;
 }
 </style>
-  stroke: #fff;
-}
 
 
