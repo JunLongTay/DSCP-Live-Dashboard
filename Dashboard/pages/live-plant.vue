@@ -111,8 +111,8 @@
               <h2 class="text-lg font-bold mb-4 text-orange-400 font-roboto-slab">Select Devices</h2>
               <input v-model="deviceSearch" type="text" placeholder="Search devices..." class="w-full mb-3 p-2 rounded border border-orange-500 bg-black text-orange-100 focus:outline-none focus:ring-2 focus:ring-orange-400" />
               <div class="flex justify-between mb-2">
-                <button @click="modalSelectAll" class="text-sm text-orange-400 hover:underline">Select All</button>
-                <button @click="modalClearAll" class="text-sm text-orange-400 hover:underline">Clear All</button>
+                <button @click="modalSelectAll" class="text-sm text-orange-400 hover:underline cursor-pointer">Select All</button>
+                <button @click="modalClearAll" class="text-sm text-orange-400 hover:underline cursor-pointer">Clear All</button>
     </div>
               <div class="max-h-60 overflow-y-auto mb-4">
                 <div v-if="deviceNamesLoading" class="text-orange-300 text-sm py-2 flex items-center gap-2">
@@ -152,6 +152,12 @@
             :isForecast="false"
             class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl"
           >
+            <template #title>
+              <span style="color: #f0d5af;">{{ device }} Latest</span>
+            </template>
+            <template #changeLabel>
+              <span style="color: #f0d5af;">vs forecast</span>
+            </template>
             <template #footer>
               <p class="mt-2 text-sm text-orange-200">
                 {{ deviceRecommendations[device] }}
@@ -172,22 +178,24 @@
             <div
               v-for="(device, idx) in selected"
               :key="device + '-chart'"
-              class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl"
+              class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-6"
               style="will-change: transform;"
             >
-              <div class="max-h-[320px] overflow-hidden">
-                <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-48" />
+              <!-- Download button above chart, right aligned -->
+              <div class="flex justify-end mb-2">
+                <button
+                  @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)"
+                  class="flex items-center gap-2 px-3 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
+                  </svg>
+                  Download
+                </button>
               </div>
-              <!-- Download button in top right -->
-              <button
-                @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)"
-                class="absolute top-4 right-4 flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
-                </svg>
-                Download
-              </button>
+              <div class="relative max-h-[420px] overflow-hidden">
+                <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-72" />
+              </div>
               <div class="flex justify-between items-center mt-2 text-sm">
                 <span class="text-orange-200">Chart: Historical - {{ device }}</span>
               </div>
@@ -627,11 +635,29 @@ const forecastOptions = computed<ChartOptions<'line'>>(() => ({
     y: {
       min: forecastChart.value.yMin,
       max: forecastChart.value.yMax,
-      ticks: { callback: v => `${v}%` },
-      title: { display: true, text: 'Moisture (%)' }
+      ticks: {
+        callback: v => `${v}%`,
+        color: '#ff8800',
+        font: { size: 16, weight: 'bold' }
+      },
+      title: {
+        display: true,
+        text: 'Moisture (%)',
+        color: '#ff8800',
+        font: { size: 16, weight: 'bold' }
+      }
     },
     x: {
-      title: { display: true, text: 'Day' }
+      ticks: {
+        color: '#ff8800',
+        font: { size: 14, weight: 'bold' }
+      },
+      title: {
+        display: true,
+        text: 'Day',
+        color: '#ff8800',
+        font: { size: 14, weight: 'bold' }
+      }
     }
   }
 }))
