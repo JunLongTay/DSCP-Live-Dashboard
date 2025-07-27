@@ -50,6 +50,21 @@
     >
       {{ props.status }}
     </div>
+
+    <!-- Recommendations Container -->
+    <div class="mt-4 bg-zinc-900/80 rounded p-3 border border-orange-700">
+      <div class="flex items-center gap-2 mb-2">
+        <!-- Icon: Lightbulb -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 3a7 7 0 00-7 7c0 3.07 1.64 5.64 4 6.32V18a1 1 0 001 1h4a1 1 0 001-1v-1.68c2.36-.68 4-3.25 4-6.32a7 7 0 00-7-7zm0 16v2m-4-2h8" />
+        </svg>
+        <span class="font-semibold text-orange-300">Recommendations</span>
+      </div>
+      <div>
+        <slot name="footer"></slot>
+      </div>
+    </div>
   </div>
 </template>
 

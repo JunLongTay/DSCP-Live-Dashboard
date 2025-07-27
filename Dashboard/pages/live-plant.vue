@@ -140,8 +140,24 @@
       <section class="mb-12">
         <h2 class="text-xl font-semibold mb-4 text-orange-400">Moisture Summary</h2>
         <div v-if="selected.length" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          <MoistureCard v-for="(device, index) in selected" :key="device + '-latest'" :device="device" :title="`${device} Latest`" :value="latestMoisture[device] ?? 0" :change="round(latestMoisture[device] - forecastValues[device]?.[29])" :changeLabel="'vs forecast'" :status="statusTag(latestMoisture[device])" :isForecast="false" class="transition-shadow hover:shadow-lg bg-zinc-900 border border-orange-500 text-orange-100 p-4" />
-          <MoistureCard v-for="(device, index) in selected" :key="device + '-forecast'" :device="device" :title="`${device} Forecast Day 30`" :value="forecastValues[device]?.[29] ?? 0" :change="round(forecastValues[device]?.[29] - latestMoisture[device])" :changeLabel="'vs current'" :status="statusTag(forecastValues[device]?.[29])" :isForecast="true" class="transition-shadow hover:shadow-lg bg-zinc-900 border border-orange-500 text-orange-100 p-4" />
+          <MoistureCard
+            v-for="device in selected"
+            :key="device + '-latest'"
+            :device="device"
+            :title="`${device} Latest`"
+            :value="latestMoisture[device] ?? 0"
+            :change="round(latestMoisture[device] - forecastValues[device]?.[29])"
+            :changeLabel="'vs forecast'"
+            :status="statusTag(latestMoisture[device])"
+            :isForecast="false"
+            class="transition-shadow hover:shadow-lg bg-zinc-900 border border-orange-500 text-orange-100 p-4"
+          >
+            <template #footer>
+              <p class="mt-2 text-sm text-orange-200">
+                {{ deviceRecommendations[device] }}
+              </p>
+            </template>
+          </MoistureCard>
         </div>
         <div v-else class="w-full flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
           Please select a device to get started.
@@ -185,7 +201,7 @@
             style="will-change: transform;"
           >
             <div class="max-h-[340px] overflow-hidden">
-              <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-48 w-full" />
+              <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-64 w-full" />
             </div>
             <div class="flex justify-between items-center mt-2 text-sm">
               <span class="text-orange-200">Chart: Forecast (30 Days)</span>
@@ -236,6 +252,24 @@ onMounted(() => {
   const month   = String(now.getMonth() + 1).padStart(2, '0')
   const year    = now.getFullYear()
   lastRefresh.value = `${hours}:${minutes} ${day}/${month}/${year}`
+})
+
+// 1️⃣ state to hold the recommendation text
+const recommendation = ref('')
+
+// 1️⃣ Build a map: device → recommendation string
+const deviceRecommendations = computed<Record<string,string>>(() => {
+  return selected.value.reduce((map, device) => {
+    const stat = statusTag(latestMoisture.value[device])  // “Dry”/“Healthy”/“Too Wet”
+    if (stat === 'Dry') {
+      map[device] = 'Soil is too dry. Consider watering soon.'
+    } else if (stat === 'Too Wet') {
+      map[device] = 'Soil is too wet. Allow it to dry out before your next watering.'
+    } else {
+      map[device] = 'Moisture is healthy. Keep your current schedule.'
+    }
+    return map
+  }, {} as Record<string,string>)
 })
 
 interface MoistureData {

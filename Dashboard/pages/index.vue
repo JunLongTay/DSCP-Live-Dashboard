@@ -135,6 +135,7 @@
         <div v-for="card in avgPerDevice" :key="card.devicename" class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center transition-transform duration-200 hover:scale-105 hover:shadow-2xl">
           <h3 class="font-bold text-lg text-orange-300 mb-3">{{ card.devicename }}</h3>
           <div class="flex flex-col gap-3 w-full">
+            <!-- Nitrogen -->
             <div class="flex items-center justify-between w-full">
               <div class="flex flex-col">
                 <span class="font-bold text-orange-300">Nitrogen</span>
@@ -145,6 +146,7 @@
                 {{ npkStatus('nitrogen', card.nitrogen) }}
               </span>
             </div>
+            <!-- Phosphorus -->
             <div class="flex items-center justify-between w-full">
               <div class="flex flex-col">
                 <span class="font-bold text-orange-300">Phosphorus</span>
@@ -155,6 +157,7 @@
                 {{ npkStatus('phosphorus', card.phosphorus) }}
               </span>
             </div>
+            <!-- Potassium -->
             <div class="flex items-center justify-between w-full">
               <div class="flex flex-col">
                 <span class="font-bold text-orange-300">Potassium</span>
@@ -165,6 +168,20 @@
                 {{ npkStatus('potassium', card.potassium) }}
               </span>
             </div>
+          </div>
+          <!-- Recommendations Container -->
+          <div class="mt-4 bg-zinc-900/80 rounded p-3 border border-orange-700 w-full">
+            <div class="flex items-center gap-2 mb-2">
+              <!-- Icon: Lightbulb -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 3a7 7 0 00-7 7c0 3.07 1.64 5.64 4 6.32V18a1 1 0 001 1h4a1 1 0 001-1v-1.68c2.36-.68 4-3.25 4-6.32a7 7 0 00-7-7zm0 16v2m-4-2h8" />
+              </svg>
+              <span class="font-semibold text-orange-300">Recommendations</span>
+            </div>
+            <p class="text-sm text-orange-200">
+              {{ npkRecommendations[card.devicename] }}
+            </p>
           </div>
         </div>
       </div>
@@ -346,6 +363,30 @@ const avgPerDevice = computed(() => {
       potassium: avgField('potassium')
     }
   })
+})
+
+// Computed recommendations based on NPK levels
+const npkRecommendations = computed<Record<string,string>>(() => {
+  const recs: Record<string,string> = {}
+  avgPerDevice.value.forEach(card => {
+    const notes: string[] = []
+    // helper to capitalize nutrient names
+    const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
+
+    ;(['nitrogen','phosphorus','potassium'] as const).forEach(key => {
+      const status = npkStatus(key, card[key])
+      if (status === 'Low') {
+        notes.push(`Low ${cap(key)}: consider adding a ${key}-rich amendment.`)
+      } else if (status === 'High') {
+        notes.push(`High ${cap(key)}: consider diluting or reducing ${key} inputs.`)
+      }
+    })
+
+    recs[card.devicename] = notes.length
+      ? notes.join(' ')
+      : 'All nutrients are within the optimal range.'
+  })
+  return recs
 })
 
 /* ── Soil helpers ─────────────────── */
