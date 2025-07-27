@@ -239,9 +239,10 @@
           />
           <div class="mt-2 flex items-center justify-between w-full">
             <div class="text-center text-orange-400 font-semibold text-base">Chart: Soil Temp - {{ device }}</div>
+            <!-- Standardised Download Button -->
             <button
               @click="downloadSingleSoilChart(idx, device)"
-              class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold ml-2"
+              class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" /></svg>
               Download
@@ -319,31 +320,75 @@ interface SoilReading { timestamp: string; soil_temp: number | null; devicename:
 interface CO2Reading   { timestamp: string; co2: number | null; devicename: string;  }
 
 /* ── State ───────────────────────── */
+const SELECTED_DEVICES_KEY = 'dashboard_selected_devices'
 const selected = ref<string[]>([])
 
+// Make device names reactive
+const allDeviceNamesRaw = ref<string[]>([])
+
+onMounted(async () => {
+  try {
+    allDeviceNamesRaw.value = await $fetch<string[]>('http://localhost:3001/np-devices')
+  } catch {
+    allDeviceNamesRaw.value = []
+  }
+})
+
+// Restore selected devices only after allDeviceNamesRaw is loaded
+watchEffect(() => {
+  // Only run in browser (client-side), not during SSR/build
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    if (allDeviceNamesRaw.value.length && !selected.value.length) {
+      const saved = localStorage.getItem(SELECTED_DEVICES_KEY)
+      if (saved) {
+        try {
+          const arr = JSON.parse(saved)
+          // Only keep devices that exist in the current deviceNames list
+          if (Array.isArray(arr)) {
+            selected.value = arr.filter(d => allDeviceNamesRaw.value.includes(d))
+          }
+        } catch {}
+      }
+      // Fallback: select first two devices if nothing saved
+      if (!selected.value.length) {
+        selected.value = allDeviceNamesRaw.value.slice(0, 2)
+      }
+    }
+    // Watch and save selection to localStorage
+    localStorage.setItem(SELECTED_DEVICES_KEY, JSON.stringify(selected.value))
+  }
+})
+
 /* ── NPK helpers ─────────────────── */
+// 1) Re‑use your existing thresholds & status function
 const NPK_UNIT = 'ppm'
 type NPKKey = 'nitrogen' | 'phosphorus' | 'potassium'
-const NPK_THRESHOLDS: Record<NPKKey, { low: number; high: number }> = {
-  nitrogen:   { low: 100, high: 400 },
-  phosphorus: { low: 50,  high: 200 },
-  potassium:  { low: 100, high: 300 }
+interface NPKThreshold { low: number; high: number }
+const NPK_THRESHOLDS: Record<NPKKey, NPKThreshold> = {
+  nitrogen:   { low: 200, high: 500 },
+  phosphorus: { low: 330, high: 880 },
+  potassium:  { low: 330, high: 880 }
 }
-function npkStatus(key: NPKKey, valStr: string) {
-  const v = Number(valStr)
-  if (isNaN(v)) return '—'
+function npkStatus(key: NPKKey, val: string) {
+  const v = Number(val)
   const { low, high } = NPK_THRESHOLDS[key]
-  return v < low ? 'Low' : v > high ? 'High' : 'Optimal'
+  if (isNaN(v)) return '—'
+  if (v < low) return 'Low'
+  if (v > high) return 'High'
+  return 'Optimal'
 }
 function statusClass(status: string) {
   switch (status) {
-    case 'Low': return 'bg-yellow-100 text-yellow-800'
-    case 'High': return 'bg-red-100 text-red-800'
-    case 'Optimal': return 'bg-green-100 text-green-800'
-    default: return 'bg-gray-100 text-gray-600'
+    case 'Low':
+      return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+    case 'High':
+      return 'bg-red-100 text-red-800 hover:bg-red-200'
+    case 'Optimal':
+      return 'bg-green-100 text-green-800 hover:bg-green-200'
+    default:
+      return 'bg-gray-100 text-gray-600 hover:bg-gray-200'
   }
 }
-
 /* ── NPK fetch/avg ───────────────── */
 const npkData = ref<NPKReading[]>([])
 
@@ -834,13 +879,9 @@ const co2Chart = ref<ChartComponentRef | null>(null)
 
 
 /* ── Device slicer ─────────────────── */
-const allDeviceNamesRaw = await $fetch<string[]>(
-  'http://localhost:3001/np-devices'
-)
-
-const options = computed(() => allDeviceNamesRaw.filter(d => !selected.value.includes(d)))
+const options = computed(() => allDeviceNamesRaw.value.filter(d => !selected.value.includes(d)))
 const allSelected = computed(() =>
-  allDeviceNamesRaw.length > 0 && selected.value.length === allDeviceNamesRaw.length
+  allDeviceNamesRaw.value.length > 0 && selected.value.length === allDeviceNamesRaw.value.length
 )
 
 // Modal filter state
@@ -850,8 +891,8 @@ const modalSelected = ref<string[]>([])
 
 const filteredDeviceOptions = computed(() => {
   const search = deviceSearch.value.trim().toLowerCase()
-  if (!search) return allDeviceNamesRaw
-  return allDeviceNamesRaw.filter(d => d.toLowerCase().includes(search))
+  if (!search) return allDeviceNamesRaw.value
+  return allDeviceNamesRaw.value.filter(d => d.toLowerCase().includes(search))
 })
 
 function selectAllDevices() {
@@ -904,3 +945,4 @@ h1, h2, h3, h4, h5, h6 {
   animation: fade-in 0.8s cubic-bezier(0.4,0,0.2,1);
 }
 </style>
+

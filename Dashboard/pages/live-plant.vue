@@ -459,9 +459,47 @@ function clearAll() {
 }
 
 onMounted(() => {
+  // Only load from localStorage if selected is empty and devices are loaded
   if (!selected.value.length && allDevices.value.length) {
-    selected.value = allDevices.value.slice(0, 2)
+    const saved = localStorage.getItem(SELECTED_DEVICES_KEY)
+    if (saved) {
+      try {
+        const arr = JSON.parse(saved)
+        if (Array.isArray(arr)) selected.value = arr
+      } catch {}
+    }
+    // Fallback: select first two devices if nothing saved
+    if (!selected.value.length) {
+      selected.value = allDevices.value.slice(0, 2)
+    }
   }
+})
+
+const SELECTED_DEVICES_KEY = 'dashboard_selected_devices'
+
+// Restore selected devices only after deviceNames are loaded
+watchEffect(() => {
+  if (deviceNames.value.length && !selected.value.length) {
+    const saved = localStorage.getItem(SELECTED_DEVICES_KEY)
+    if (saved) {
+      try {
+        const arr = JSON.parse(saved)
+        // Only keep devices that exist in the current deviceNames list
+        if (Array.isArray(arr)) {
+          selected.value = arr.filter(d => deviceNames.value.includes(d))
+        }
+      } catch {}
+    }
+    // Fallback: select first two devices if nothing saved
+    if (!selected.value.length) {
+      selected.value = deviceNames.value.slice(0, 2)
+    }
+  }
+})
+
+// Watch and save selection to localStorage
+watchEffect(() => {
+  localStorage.setItem(SELECTED_DEVICES_KEY, JSON.stringify(selected.value))
 })
 
 /* ── Data Structuring ───────────────────────────── */
