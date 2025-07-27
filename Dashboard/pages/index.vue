@@ -21,23 +21,44 @@
       <!-- Dashboard Overview (no container) -->
       <div class="flex flex-col gap-4">
         <div class="flex items-center justify-between mb-2">
-          <h1 class="text-3xl font-bold text-orange-400 font-roboto-slab">Dashboard Overview</h1>
-          <!-- Export Data Dropdown -->
-          <div class="relative" @click.stop>
-            <button @click="showExportMenu = !showExportMenu" class="px-4 py-2 rounded bg-orange-500 text-white font-semibold shadow hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-colors duration-200">
-              Export Data ▼
-            </button>
-            <div v-if="showExportMenu" class="absolute right-0 mt-2 w-64 bg-zinc-900 border border-orange-500 rounded shadow-lg z-50">
-              <div class="p-3">
-                <div class="text-orange-400 font-bold mb-2">Full Report</div>
-                <button @click="downloadFullReport(); showExportMenu = false" class="w-full text-left px-3 py-2 rounded hover:bg-orange-500 hover:text-white text-orange-100 font-medium">Download All Charts + Summary</button>
-              </div>
+          <h1 class="text-3xl font-bold text-orange-400 font-roboto-slab">Composting Dashboard Overview</h1>
+          <!-- Export Data Dropdown (only Full Report) -->
+          <Menu as="div" class="relative inline-block text-left">
+            <div>
+              <MenuButton>
+                <Button variant="default">
+                  Export Data ▼
+                </Button>
+              </MenuButton>
             </div>
-          </div>
+            <Transition
+              enter="transition ease-out duration-100"
+              enter-from="opacity-0 scale-95"
+              enter-to="opacity-100 scale-100"
+              leave="transition ease-in duration-75"
+              leave-from="opacity-100 scale-100"
+              leave-to="opacity-0 scale-95"
+            >
+              <MenuItems class="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg
+                                bg-zinc-900 ring-1 ring-orange-700 ring-opacity-70 focus:outline-none z-50">
+                <div class="py-1">
+                  <MenuItem>
+                    <div class="px-4 py-2 text-sm text-orange-200 font-semibold">Full Report</div>
+                  </MenuItem>
+                  <MenuItem as="button"
+                    @click="downloadFullReport"
+                    class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800"
+                  >
+                    Download All Charts + Summary
+                  </MenuItem>
+                </div>
+              </MenuItems>
+            </Transition>
+          </Menu>
         </div>
 
         <!-- Divider line below header -->
-        <hr class="border-t-2 border-orange-700 mb-4" />
+        <hr class="border-t border-orange-700 mb-4" />
 
       <div class="w-full mb-8">
         <div class="flex items-center justify-between mb-2">
@@ -73,40 +94,38 @@
         <!-- Modal Filter Trigger -->
         <button
           @click="showDeviceModal = true"
-          class="w-full border border-orange-500 rounded p-2 bg-zinc-900 text-orange-100 text-left focus:outline-none focus:ring-2 focus:ring-orange-400"
+          class="w-full border border-orange-500 rounded p-2 bg-zinc-900 text-orange-100 text-left focus:outline-none focus:ring-2 focus:ring-orange-400 mt-3"
         >
           Select Devices
         </button>
 
         <!-- Device Filter Modal -->
-        <Transition name="fade">
-          <div v-if="showDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md">
-            <div class="bg-zinc-900 border border-orange-500 rounded-lg shadow-lg p-6 w-full max-w-md relative animate-fade-in">
-              <button @click="showDeviceModal = false" class="absolute top-3 right-3 text-orange-400 text-xl font-bold">×</button>
-              <h3 class="text-lg font-bold text-orange-300 mb-3">Select Devices</h3>
-              <input v-model="deviceSearch" type="text" placeholder="Search devices..." class="w-full mb-3 p-2 border border-orange-500 rounded bg-zinc-800 text-orange-100 placeholder-orange-400" />
-              <div class="flex justify-between mb-2 text-orange-400 text-sm">
-                <button @click="selectAllDevices" class="hover:underline">Select All</button>
-                <button @click="clearAllDevices" class="hover:underline">Clear All</button>
-              </div>
-              <div class="max-h-60 overflow-y-auto mb-4">
-                <div v-for="d in filteredDeviceOptions" :key="d" class="flex items-center gap-2 py-1">
-                  <input type="checkbox" :id="'dev-' + d" :value="d" v-model="modalSelected" class="accent-orange-500" />
-                  <label :for="'dev-' + d" class="text-orange-100">{{ d }}</label>
-                </div>
-              </div>
-              <div class="flex justify-end gap-2 mt-2">
-                <button @click="showDeviceModal = false" class="px-4 py-2 rounded bg-zinc-700 text-orange-200 font-semibold">Cancel</button>
-                <button @click="confirmDeviceSelection" class="px-4 py-2 rounded bg-orange-500 text-white font-bold">Confirm</button>
+        <div v-if="showDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div class="bg-zinc-900 border border-orange-500 rounded-lg shadow-lg p-6 w-full max-w-md relative animate-fade-in">
+            <button @click="showDeviceModal = false" class="absolute top-3 right-3 text-orange-400 text-xl font-bold">×</button>
+            <h3 class="text-lg font-bold text-orange-300 mb-3">Select Devices</h3>
+            <input v-model="deviceSearch" type="text" placeholder="Search devices..." class="w-full mb-3 p-2 border border-orange-500 rounded bg-zinc-800 text-orange-100 placeholder-orange-400" />
+            <div class="flex justify-between mb-2 text-orange-400 text-sm">
+              <button @click="selectAllDevices" class="hover:underline">Select All</button>
+              <button @click="clearAllDevices" class="hover:underline">Clear All</button>
+            </div>
+            <div class="max-h-60 overflow-y-auto mb-4">
+              <div v-for="d in filteredDeviceOptions" :key="d" class="flex items-center gap-2 py-1">
+                <input type="checkbox" :id="'dev-' + d" :value="d" v-model="modalSelected" class="accent-orange-500" />
+                <label :for="'dev-' + d" class="text-orange-100">{{ d }}</label>
               </div>
             </div>
+            <div class="flex justify-end gap-2 mt-2">
+              <button @click="showDeviceModal = false" class="px-4 py-2 rounded bg-zinc-700 text-orange-200 font-semibold">Cancel</button>
+              <button @click="confirmDeviceSelection" class="px-4 py-2 rounded bg-orange-500 text-white font-bold">Confirm</button>
+            </div>
           </div>
-        </Transition>
+        </div>
       </div>
     </div>
 
       <!-- 🔹 Average NPK Levels -->
-      <h2 class="text-2xl font-bold mb-4 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">Average NPK Levels</h2>
+      <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Average NPK Levels</h2>
       <div v-if="selected.length" class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
         <div v-for="card in avgPerDevice" :key="card.devicename" class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center transition-transform duration-200 hover:scale-105 hover:shadow-2xl">
           <h3 class="font-bold text-lg text-orange-300 mb-3">{{ card.devicename }}</h3>
@@ -150,7 +169,7 @@
 
 
       <!-- 🔸 Soil Temperature -->
-      <h2 class="text-2xl font-bold mb-6 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">Soil Temperature</h2>
+      <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Soil Temperature</h2>
       <div v-if="selected.length" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
         <div
           v-for="(device, idx) in selected"
@@ -182,7 +201,7 @@
       </div>
 
       <!-- 🔸 CO₂ Chart (Actual Only) -->
-      <h2 class="text-2xl font-bold mb-6 text-orange-400" style="font-family: 'Roboto Slab', Arial, serif;">CO₂ Levels</h2>
+      <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">CO₂ Levels</h2>
       <div v-if="selected.length" class="p-4 rounded shadow border border-orange-500 bg-zinc-900 mb-12 transition-transform duration-200 hover:scale-105 hover:shadow-2xl" style="will-change: transform;">
         <LineChart
           :chart-data="co2Data"
@@ -216,10 +235,15 @@ import {
   ComboboxButton,
   ComboboxOptions,
   ComboboxOption,
+  Menu, 
+  MenuButton, 
+  MenuItem, 
+  MenuItems, 
 } from '@headlessui/vue'
-import { ref, computed, watchEffect, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watchEffect, nextTick } from 'vue'
 import type { ChartData, ChartOptions } from 'chart.js'
 import 'chartjs-adapter-date-fns'
+import { Transition } from 'vue'
 import { Button } from '@/components/ui/button'
 
 
@@ -588,21 +612,6 @@ async function exportSelected(fmt: ExportFmt) {
   downloadBlob('selected_data.xlsx', wbout, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 }
 
-const showExportMenu = ref(false)
-
-function handleClickOutside(event: MouseEvent) {
-  const menu = document.querySelector('.relative .absolute')
-  if (showExportMenu.value && menu && !menu.contains(event.target as Node)) {
-    showExportMenu.value = false
-  }
-}
-onMounted(() => {
-  window.addEventListener('click', handleClickOutside)
-})
-onBeforeUnmount(() => {
-  window.removeEventListener('click', handleClickOutside)
-})
-
 async function downloadFullReport() {
   // Gather all filtered data
   const npkRows = buildNPKRowsFiltered()
@@ -758,11 +767,30 @@ watchEffect(() => {
   }
 })
 
+function toggleDevice(dev: string) {
+  if (selected.value.includes(dev)) {
+    selected.value = selected.value.filter(d => d !== dev)
+  } else {
+    selected.value = [...selected.value, dev]
+  }
+}
+
 function remove(dev: string) { selected.value = selected.value.filter(d => d !== dev) }
 function clearAll() { selected.value = [] }
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto+Slab:wght@700&display=swap');
+
+.font-inter {
+  font-family: 'Inter', Arial, sans-serif;
+}
+.font-roboto-slab {
+  font-family: 'Roboto Slab', serif;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Roboto Slab', serif;
+}
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(24px); }
   to   { opacity: 1; transform: none; }
