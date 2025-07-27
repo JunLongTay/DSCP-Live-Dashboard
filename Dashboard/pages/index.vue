@@ -131,58 +131,89 @@
 
       <!-- 🔹 Average NPK Levels -->
       <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Average NPK Levels</h2>
-      <div v-if="selected.length" class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-        <div v-for="card in avgPerDevice" :key="card.devicename" class="bg-zinc-900 rounded shadow p-4 border border-orange-500 flex flex-col items-center transition-transform duration-200 hover:scale-105 hover:shadow-2xl">
-          <h3 class="font-bold text-lg text-orange-300 mb-3">{{ card.devicename }}</h3>
-          <div class="flex flex-col gap-3 w-full">
-            <!-- Nitrogen -->
-            <div class="flex items-center justify-between w-full">
-              <div class="flex flex-col">
-                <span class="font-bold text-orange-300">Nitrogen</span>
-                <span class="text-2xl font-bold text-orange-400">{{ card.nitrogen }} {{ NPK_UNIT }}</span>
-              </div>
-              <span class="ml-4 inline-block px-2 py-0.5 text-xs font-semibold rounded"
-                    :class="statusClass(npkStatus('nitrogen', card.nitrogen))">
-                {{ npkStatus('nitrogen', card.nitrogen) }}
+      <div v-if="selected.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div
+          v-for="card in avgPerDevice"
+          :key="card.devicename"
+          class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
+                 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col"
+          style="will-change: transform;"
+        >
+          <!-- Header -->
+          <h3 class="text-xl font-semibold text-orange-300 mb-4 text-center">
+            {{ card.devicename }}
+          </h3>
+          <!-- Nutrient rows -->
+          <div v-for="nutrient in ['nitrogen','phosphorus','potassium']" :key="nutrient" class="mb-6 flex items-center gap-4">
+            <!-- Status bar/glyph -->
+            <div class="flex flex-col items-center w-16 flex-shrink-0">
+              <div
+                class="w-2 h-10 rounded-full"
+                :class="{
+                  'bg-green-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Optimal',
+                  'bg-yellow-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Low',
+                  'bg-red-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='High'
+                }"
+                :style="{
+                  height: '40px',
+                  transition: 'height 0.8s cubic-bezier(0.4,0,0.2,1)',
+                  boxShadow: npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])!=='Optimal' ? '0 0 8px 2px #f87171' : ''
+                }"
+              ></div>
+              <span class="mt-1 text-xs text-zinc-400 font-semibold">
+                {{ npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) }}
               </span>
             </div>
-            <!-- Phosphorus -->
-            <div class="flex items-center justify-between w-full">
-              <div class="flex flex-col">
-                <span class="font-bold text-orange-300">Phosphorus</span>
-                <span class="text-2xl font-bold text-orange-400">{{ card.phosphorus }} {{ NPK_UNIT }}</span>
-              </div>
-              <span class="ml-4 inline-block px-2 py-0.5 text-xs font-semibold rounded"
-                    :class="statusClass(npkStatus('phosphorus', card.phosphorus))">
-                {{ npkStatus('phosphorus', card.phosphorus) }}
+            <!-- Value & label -->
+            <div class="flex-1 flex flex-col min-w-0">
+              <span class="text-sm font-medium text-orange-300 capitalize mb-1" style="opacity:0.8;">
+                {{ nutrient }}
+              </span>
+              <span class="text-3xl font-bold text-orange-400 leading-tight">
+                {{ card[nutrient as keyof typeof card] }} {{ NPK_UNIT }}
               </span>
             </div>
-            <!-- Potassium -->
-            <div class="flex items-center justify-between w-full">
-              <div class="flex flex-col">
-                <span class="font-bold text-orange-300">Potassium</span>
-                <span class="text-2xl font-bold text-orange-400">{{ card.potassium }} {{ NPK_UNIT }}</span>
+            <!-- Gauge bar -->
+            <div class="flex-1 flex items-center min-w-0">
+              <div class="w-full h-2 bg-gray-900 rounded overflow-hidden flex items-center">
+                <div
+                  class="h-full rounded transition-all duration-700"
+                  :class="{
+                    'bg-green-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Optimal',
+                    'bg-yellow-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Low',
+                    'bg-red-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='High'
+                  }"
+                  :style="{
+                    width: `${Math.min(100, Math.max(0,
+                      ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].low)
+                        / (NPK_THRESHOLDS[nutrient as NPKKey].high - NPK_THRESHOLDS[nutrient as NPKKey].low))
+                      * 100
+                    ))}%`
+                  }"
+                ></div>
               </div>
-              <span class="ml-4 inline-block px-2 py-0.5 text-xs font-semibold rounded"
-                    :class="statusClass(npkStatus('potassium', card.potassium))">
-                {{ npkStatus('potassium', card.potassium) }}
-              </span>
             </div>
           </div>
-          <!-- Recommendations Container -->
-          <div class="mt-4 bg-zinc-900/80 rounded p-3 border border-orange-700 w-full">
-            <div class="flex items-center gap-2 mb-2">
+          <!-- Recommendations accordion -->
+          <details class="mt-auto bg-zinc-900 border border-orange-700 rounded-lg">
+            <summary
+              class="cursor-pointer py-2 px-4 text-sm font-medium text-orange-300
+                     transition-colors duration-150 flex items-center gap-2"
+            >
               <!-- Icon: Lightbulb -->
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 3a7 7 0 00-7 7c0 3.07 1.64 5.64 4 6.32V18a1 1 0 001 1h4a1 1 0 001-1v-1.68c2.36-.68 4-3.25 4-6.32a7 7 0 00-7-7zm0 16v2m-4-2h8" />
               </svg>
-              <span class="font-semibold text-orange-300">Recommendations</span>
-            </div>
-            <p class="text-sm text-orange-200">
-              {{ npkRecommendations[card.devicename] }}
-            </p>
-          </div>
+              Recommendations
+            </summary>
+            <ul class="p-4 list-none text-sm text-orange-200 space-y-2">
+              <li v-for="note in npkRecommendations[card.devicename].split('. ')" :key="note" class="flex items-start gap-2">
+                <span class="text-lg">•</span>
+                <span>{{ note }}</span>
+              </li>
+            </ul>
+          </details>
         </div>
       </div>
       <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold mb-8">
@@ -368,27 +399,42 @@ const avgPerDevice = computed(() => {
 // Computed recommendations based on NPK levels
 const npkRecommendations = computed<Record<string,string>>(() => {
   const recs: Record<string,string> = {}
+
   avgPerDevice.value.forEach(card => {
     const notes: string[] = []
-    // helper to capitalize nutrient names
-    const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
+    const name = card.devicename
+    const nStatus = npkStatus('nitrogen',   card.nitrogen)
+    const pStatus = npkStatus('phosphorus', card.phosphorus)
+    const kStatus = npkStatus('potassium',  card.potassium)
 
-    ;(['nitrogen','phosphorus','potassium'] as const).forEach(key => {
-      const status = npkStatus(key, card[key])
-      if (status === 'Low') {
-        notes.push(`Low ${cap(key)}: consider adding a ${key}-rich amendment.`)
-      } else if (status === 'High') {
-        notes.push(`High ${cap(key)}: consider diluting or reducing ${key} inputs.`)
-      }
-    })
+    // Nitrogen
+    if (nStatus === 'Low') {
+      notes.push('🟢 Low N: Add more green compost materials (vegetable scraps, coffee grounds, fresh grass clippings).')
+    } else if (nStatus === 'High') {
+      notes.push('🟠 High N: Mix in more brown materials (dried leaves, straw, shredded paper) to balance.')
+    }
 
-    recs[card.devicename] = notes.length
+    // Phosphorus
+    if (pStatus === 'Low') {
+      notes.push('🟢 Low P: Toss in bone meal or crushed eggshells to boost phosphorus levels.')
+    } else if (pStatus === 'High') {
+      notes.push('🟠 High P: Reduce high‑P inputs (e.g. poultry manure) and add carbon‑rich browns.')
+    }
+
+    // Potassium
+    if (kStatus === 'Low') {
+      notes.push('🟢 Low K: Add wood ash or banana peels for a potassium boost.')
+    } else if (kStatus === 'High') {
+      notes.push('🟠 High K: Cut back on wood ash; mix in more greens or browns without K.')
+    }
+
+    recs[name] = notes.length
       ? notes.join(' ')
-      : 'All nutrients are within the optimal range.'
+      : '✅ All nutrients are in good range for healthy composting.'
   })
+
   return recs
 })
-
 /* ── Soil helpers ─────────────────── */
 const TEMP_RANGE  = { low: 25, high: 32 }
 
