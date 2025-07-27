@@ -122,7 +122,7 @@
             </div>
             <div class="flex justify-end gap-2 mt-2">
               <button @click="showDeviceModal = false" class="px-4 py-2 rounded bg-zinc-700 text-orange-200 font-semibold">Cancel</button>
-              <button @click="confirmDeviceSelection" class="px-4 py-2 rounded bg-orange-500 text-white font-bold">Confirm</button>
+              <button @click="confirmDeviceSelection" class="px-4 py-2 rounded bg-orange-500 text-white font-bold cursor-pointer">Confirm</button>
             </div>
           </div>
         </div>

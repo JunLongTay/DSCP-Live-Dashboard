@@ -87,7 +87,7 @@
       {{ d }}
       <button
         @click="remove(d)"
-              class="ml-1 text-orange-400 hover:text-orange-200 focus:outline-none transition-colors duration-200"
+        class="ml-1 text-orange-400 hover:text-orange-200 focus:outline-none transition-colors duration-200 cursor-pointer"
       >
         ×
       </button>
@@ -95,9 +95,9 @@
     <button
       v-if="selected.length"
       @click="clearAll"
-            class="ml-auto text-sm text-orange-400 hover:underline"
+      class="ml-auto text-sm text-orange-400 hover:underline cursor-pointer"
     >
-            Clear All
+      Clear All
     </button>
   </div>
         <!-- Modal Picker Trigger -->
@@ -128,8 +128,8 @@
 </div>
               <div class="flex justify-end gap-3 mt-4">
                 <button @click="showDeviceModal = false" class="px-4 py-2 rounded bg-zinc-800 text-orange-200 hover:bg-zinc-700">Cancel</button>
-                <button @click="confirmDeviceModal" class="px-4 py-2 rounded bg-orange-600 text-white font-semibold hover:bg-orange-700">Confirm</button>
-</div>
+                <button @click="confirmDeviceModal" class="px-4 py-2 rounded bg-orange-600 text-white font-semibold hover:bg-orange-700 cursor-pointer">Confirm</button>
+              </div>
               <button @click="showDeviceModal = false" class="absolute top-2 right-2 text-orange-400 hover:text-orange-200 text-xl">×</button>
     </div>
     </div>
@@ -150,7 +150,7 @@
             :changeLabel="'vs forecast'"
             :status="statusTag(latestMoisture[device])"
             :isForecast="false"
-            class="transition-shadow hover:shadow-lg bg-zinc-900 border border-orange-500 text-orange-100 p-4"
+            class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl"
           >
             <template #footer>
               <p class="mt-2 text-sm text-orange-200">
@@ -172,24 +172,24 @@
             <div
               v-for="(device, idx) in selected"
               :key="device + '-chart'"
-              class="bg-zinc-900 p-8 rounded shadow-md border border-orange-500 flex flex-col gap-2 transition-transform duration-200 hover:scale-105 hover:shadow-2xl"
+              class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl"
               style="will-change: transform;"
             >
               <div class="max-h-[320px] overflow-hidden">
                 <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-48" />
               </div>
+              <!-- Download button in top right -->
+              <button
+                @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)"
+                class="absolute top-4 right-4 flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
+                </svg>
+                Download
+              </button>
               <div class="flex justify-between items-center mt-2 text-sm">
                 <span class="text-orange-200">Chart: Historical - {{ device }}</span>
-                <!-- Standardised Download Button (same as index.vue) -->
-                <button
-                  @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)"
-                  class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold active:bg-orange-500 active:text-white"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
-                  </svg>
-                  Download
-                </button>
               </div>
             </div>
           </div>
@@ -206,25 +206,22 @@
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Moisture Forecast (Next 30 Days)</h2>
         <template v-if="selected.length && forecastChart">
           <div
-            class="bg-zinc-900 p-8 rounded shadow-md border border-orange-500 w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:scale-105 hover:shadow-2xl"
+            class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl"
             style="will-change: transform;"
           >
             <div class="max-h-[340px] overflow-hidden">
               <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-64 w-full" />
             </div>
-            <div class="flex justify-between items-center mt-2 text-sm">
-              <span class="text-orange-200">Chart: Forecast (30 Days)</span>
-              <!-- Standardised Download Button (same as index.vue) -->
-              <button
-                @click="downloadChartImage('forecast-chart', 'forecast-30day.png')"
-                class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold active:bg-orange-500 active:text-white"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
-                </svg>
-                Download
-              </button>
-            </div>
+            <!-- Download button in top right -->
+            <button
+              @click="downloadChartImage('forecast-chart', 'forecast-30day.png')"
+              class="absolute top-4 right-4 flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
+              </svg>
+              Download
+            </button>
           </div>
         </template>
         <template v-else>
@@ -739,5 +736,21 @@ h1, h2, h3, h4, h5, h6 {
 }
 .animate-fade-in {
   animation: fade-in 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+.orange-glow {
+  box-shadow:
+    0 2px 16px 0 #ea580c33,
+    0 0 0 1.5px #fff2,
+    0 1px 8px #0002;
+  transition: box-shadow 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+.orange-glow:hover {
+  box-shadow:
+    0 4px 32px 0 #ea580c66,
+    0 0 0 2px #ea580c99,
+    0 2px 16px #0004;
+}
+.hover\:glow-orange:hover {
+  box-shadow: 0 0 24px 0 rgba(255, 136, 0, 0.18), 0 0 2px 0 rgba(255, 136, 0, 0.12);
 }
 </style>
