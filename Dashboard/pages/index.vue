@@ -20,43 +20,48 @@
       <!-- 🔹 Device Slicer -->
       <!-- Dashboard Overview (no container) -->
       <div class="flex flex-col gap-4">
-        <div class="flex items-center justify-between mb-2">
+        <!-- Title + Last refreshed + Export row -->
+        <div class="flex items-baseline gap-6 mb-2">
           <h1 class="text-3xl font-bold text-orange-400 font-roboto-slab">Composting Dashboard Overview</h1>
-          <!-- Export Data Dropdown (only Full Report) -->
-          <Menu as="div" class="relative inline-block text-left">
-            <div>
-              <MenuButton>
-                <Button variant="default">
-                  Export Data ▼
-                </Button>
-              </MenuButton>
-            </div>
-            <Transition
-              enter="transition ease-out duration-100"
-              enter-from="opacity-0 scale-95"
-              enter-to="opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leave-from="opacity-100 scale-100"
-              leave-to="opacity-0 scale-95"
-            >
-              <MenuItems class="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg
-                                bg-zinc-900 ring-1 ring-orange-700 ring-opacity-70 focus:outline-none z-50">
-                <div class="py-1">
-                  <MenuItem>
-                    <div class="px-4 py-2 text-sm text-orange-200 font-semibold">Full Report</div>
-                  </MenuItem>
-                  <MenuItem as="button"
-                    @click="downloadFullReport"
-                    class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800"
-                  >
-                    Download All Charts + Summary
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </Transition>
-          </Menu>
+          <p class="text-sm text-orange-300">
+            Last refreshed: {{ lastRefresh }}
+          </p>
+          <!-- Export Data Dropdown aligned right -->
+          <div class="ml-auto">
+            <Menu as="div" class="relative inline-block text-left">
+              <div>
+                <MenuButton>
+                  <Button variant="default">
+                    Export Data ▼
+                  </Button>
+                </MenuButton>
+              </div>
+              <Transition
+                enter="transition ease-out duration-100"
+                enter-from="opacity-0 scale-95"
+                enter-to="opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leave-from="opacity-100 scale-100"
+                leave-to="opacity-0 scale-95"
+              >
+                <MenuItems class="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg
+                                  bg-zinc-900 ring-1 ring-orange-700 ring-opacity-70 focus:outline-none z-50">
+                  <div class="py-1">
+                    <MenuItem>
+                      <div class="px-4 py-2 text-sm text-orange-200 font-semibold">Full Report</div>
+                    </MenuItem>
+                    <MenuItem as="button"
+                      @click="downloadFullReport"
+                      class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800"
+                    >
+                      Download All Charts + Summary
+                    </MenuItem>
+                  </div>
+                </MenuItems>
+              </Transition>
+            </Menu>
+          </div>
         </div>
-
         <!-- Divider line below header -->
         <hr class="border-t border-orange-700 mb-4" />
 
@@ -240,12 +245,25 @@ import {
   MenuItem, 
   MenuItems, 
 } from '@headlessui/vue'
-import { ref, computed, watchEffect, nextTick } from 'vue'
+import { ref, computed, watchEffect, onMounted, nextTick } from 'vue'
 import type { ChartData, ChartOptions } from 'chart.js'
 import 'chartjs-adapter-date-fns'
 import { Transition } from 'vue'
 import { Button } from '@/components/ui/button'
 
+// On mount, record the page load time in “HH:mm DD/MM/YYYY” format
+const lastRefresh = ref('')
+
+onMounted(() => {
+  // Format as “HH:mm DD/MM/YYYY”
+  const now = new Date()
+  const hours   = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const day     = String(now.getDate()).padStart(2, '0')
+  const month   = String(now.getMonth() + 1).padStart(2, '0')
+  const year    = now.getFullYear()
+  lastRefresh.value = `${hours}:${minutes} ${day}/${month}/${year}`
+})
 
 /* ── Types ───────────────────────── */
 interface NPKReading { timestamp: string; nitrogen: number | null; phosphorus: number | null; potassium: number | null; devicename: string }

@@ -11,9 +11,14 @@
     <div class="min-h-screen relative z-20 flex flex-col px-6 md:px-12 py-8">
       <!-- 🔝 Header with Sticky Filter Bar -->
       <div class="sticky z-40 shadow-md border-b border-orange-700 pb-4 mb-8 ">
-        <div class="flex flex-wrap justify-between items-center gap-6 mb-4">
-          <h1 class="text-3xl font-bold text-orange-400">Soil Moisture Forecast</h1>
-          <div class="flex flex-wrap gap-4 items-center justify-end w-full md:w-auto">
+        <div class="flex items-baseline justify-between mb-4">
+          <!-- LEFT: Title + Last refreshed -->
+          <div class="flex items-baseline gap-6">
+            <h1 class="text-3xl font-bold text-orange-400 font-roboto-slab">Soil Moisture Forecast</h1>
+            <p class="text-sm text-orange-300 whitespace-nowrap">Last refreshed: {{ lastRefresh }}</p>
+          </div>
+          <!-- RIGHT: Time Range + Export -->
+          <div class="flex flex-row gap-4 items-center">
             <div class="flex items-center gap-2">
               <label class="font-medium text-orange-300">Time Range:</label>
               <select v-model="selectedRange" class="border border-orange-500 rounded p-2 text-sm bg-zinc-900 text-orange-200">
@@ -22,7 +27,7 @@
                 <option value="long">Long (7 Days)</option>
               </select>
             </div>
-            <!-- 📁 Export Dropdown -->
+            <!-- Export Dropdown -->
             <div class="relative inline-block text-left">
               <Menu as="div" class="relative">
                 <div>
@@ -218,6 +223,20 @@ import Sidebar from '../components/Sidebar/index.vue'
 import { Button } from '@/components/ui/button'
 
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale, Filler)
+
+// On mount, record the page load time in “HH:mm DD/MM/YYYY” format
+const lastRefresh = ref('')
+
+onMounted(() => {
+  // Format as “HH:mm DD/MM/YYYY”
+  const now = new Date()
+  const hours   = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const day     = String(now.getDate()).padStart(2, '0')
+  const month   = String(now.getMonth() + 1).padStart(2, '0')
+  const year    = now.getFullYear()
+  lastRefresh.value = `${hours}:${minutes} ${day}/${month}/${year}`
+})
 
 interface MoistureData {
   timestamp: string
