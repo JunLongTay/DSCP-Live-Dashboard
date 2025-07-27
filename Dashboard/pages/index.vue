@@ -282,13 +282,13 @@
         <div class="flex items-center justify-between mb-2">
           <div class="flex flex-wrap gap-2">
             <span
-              v-for="(device, idx) in selected"
+              v-for="(device, idx) in co2ChartDevices"
               :key="device"
-              class="co2-pill inline-flex items-center px-4 py-1 rounded-full font-medium text-sm"
+              class="co2-pill font-semibold text-xs rounded-full px-4 py-1 flex items-center border"
               :style="{
                 background: co2DeviceColorMap[device],
                 color: '#fff',
-                border: `2px solid ${co2DeviceColorMap[device]}`,
+                borderColor: co2DeviceColorMap[device],
                 opacity: co2ChartDevices.includes(device) ? 1 : 0.5
               }"
               @click="toggleCo2Device(device)"
@@ -987,6 +987,7 @@ function clearAllDevices() {
 }
 function confirmDeviceSelection() {
   selected.value = [...modalSelected.value]
+  co2ChartDevices.value = [...selected.value]
   showDeviceModal.value = false
 }
 
@@ -1005,8 +1006,14 @@ function toggleDevice(dev: string) {
   }
 }
 
-function remove(dev: string) { selected.value = selected.value.filter(d => d !== dev) }
-function clearAll() { selected.value = [] }
+function remove(dev: string) { 
+  selected.value = selected.value.filter(d => d !== dev)
+  co2ChartDevices.value = [...selected.value]
+}
+function clearAll() {
+  selected.value = []
+  co2ChartDevices.value = []
+}
 
 // State for CO₂ chart device filter
 const co2ChartDevices = ref<string[]>([]);
@@ -1031,20 +1038,20 @@ function toggleCo2Device(dev: string) {
   }
 }
 
-// Color palette for device pills and CO₂ chart lines
-const co2DeviceColors = [
-  '#facc15', // yellow (low)
-  '#22c55e', // green (optimal)
-  '#f87171', // red (high)
-  // ...add more if needed, but keep first three as yellow, green, red for consistency
-]
+function getDeviceColor(idx: number) {
+  // Generates visually distinct HSL colors
+  return `hsl(${(idx * 47) % 360}, 80%, 55%)`
+}
 
 // Map device name to color based on its index in selected
-const co2DeviceColorMap = computed<Record<string, string>>(() => {
-  const map: Record<string, string> = {}
-  const devices = selected.value.length ? selected.value : Array.from(new Set(co2Raw.value.map(r => r.devicename)))
+
+const co2DeviceColorMap = computed(() => {
+  const map = {} as Record<string, string>
+  const devices = co2ChartDevices.value.length
+    ? co2ChartDevices.value
+    : selected.value
   devices.forEach((dev, idx) => {
-    map[dev] = co2DeviceColors[idx % co2DeviceColors.length]
+    map[dev] = getDeviceColor(idx)
   })
   return map
 })
