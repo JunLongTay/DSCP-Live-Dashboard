@@ -295,15 +295,27 @@
 
       <!-- 🔸 CO₂ Chart (Actual Only) -->
       <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">CO₂ Levels</h2>
+      <!-- Pills for CO₂ devices -->
+      <div v-if="selected.length" class="flex flex-wrap gap-2 mb-2">
+        <span
+          v-for="(device, idx) in selected"
+          :key="device"
+          class="co2-pill inline-flex items-center px-4 py-1 rounded-full font-medium text-sm"
+          :style="{
+            background: co2DeviceColorMap[device],
+            color: '#fff',
+            border: `2px solid ${co2DeviceColorMap[device]}`,
+            opacity: co2ChartDevices.includes(device) ? 1 : 0.5
+          }"
+          @click="toggleCo2Device(device)"
+        >
+          {{ device }}
+        </span>
+      </div>
       <div v-if="selected.length" class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-4 mb-12 transition-transform duration-200 hover:scale-105 hover:shadow-2xl" style="will-change: transform;">
-        <LineChart
-          :chart-data="co2Data"
-          :chart-options="co2Options"
-          ref="co2Chart"
-          id="co2-chart"
-          class="h-60"
-        />
-        <div class="mt-2 flex items-center justify-end w-full">
+        <!-- Chart Header with download button aligned right -->
+        <div class="flex items-center justify-between mb-2">
+          <div></div>
           <button
             @click="downloadChartImage('co2Chart')"
             class="download-btn flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-700 hover:text-white transition-colors"
@@ -314,6 +326,13 @@
             Download
           </button>
         </div>
+        <LineChart
+          :chart-data="co2Data"
+          :chart-options="co2Options"
+          ref="co2Chart"
+          id="co2-chart"
+          class="h-60"
+        />
       </div>
       <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
         Please select a device to get started.
@@ -721,7 +740,7 @@ const filteredCo2Raw = computed(() => {
 
 // CO2 chart: only actual lines for each device
 const co2Data = computed<ChartData<'line'>>(() => {
-  let devices = selected.value.length ? selected.value : Array.from(new Set(co2Raw.value.map(r => r.devicename)))
+  let devices = co2ChartDevices.value.length ? co2ChartDevices.value : (selected.value.length ? selected.value : Array.from(new Set(co2Raw.value.map(r => r.devicename))))
   // Collect all timestamps for x-axis
   const allTimestamps = Array.from(new Set(co2Raw.value.map(r => r.timestamp))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
   const labels = allTimestamps.map(ts => {
@@ -737,8 +756,8 @@ const co2Data = computed<ChartData<'line'>>(() => {
     return {
       label: `${device} CO₂ (Actual) (${CO2_UNIT})`,
       data: values,
-      borderColor: `hsl(${(idx * 60) % 360}, 80%, 50%)`,
-      pointRadius: 6, // Increased marker size
+      borderColor: co2DeviceColors[idx % co2DeviceColors.length],
+      pointRadius: 6,
       fill: false
     }
   })
@@ -1009,6 +1028,52 @@ function toggleDevice(dev: string) {
 
 function remove(dev: string) { selected.value = selected.value.filter(d => d !== dev) }
 function clearAll() { selected.value = [] }
+
+// State for CO₂ chart device filter
+const co2ChartDevices = ref<string[]>([])
+
+// Initialize with all selected devices
+watchEffect(() => {
+  if (!co2ChartDevices.value.length && selected.value.length) {
+    co2ChartDevices.value = [...selected.value]
+  }
+})
+
+// Toggle device filter for CO₂ chart
+function toggleCo2Device(dev: string) {
+  if (co2ChartDevices.value.includes(dev)) {
+    co2ChartDevices.value = co2ChartDevices.value.filter(d => d !== dev)
+    // If none selected, show all
+    if (co2ChartDevices.value.length === 0) {
+      co2ChartDevices.value = [...selected.value]
+    }
+  } else {
+    co2ChartDevices.value.push(dev)
+  }
+}
+
+// Color palette for device pills and CO₂ chart lines
+const co2DeviceColors = [
+  '#f77c05', // orange
+  '#3b82f6', // blue
+  '#facc15', // yellow
+  '#22c55e', // green
+  '#a855f7', // purple
+  '#f87171', // red
+  '#14b8a6', // teal
+  '#eab308', // amber
+  // add more if needed
+]
+
+// Map device name to color based on its index in selected
+const co2DeviceColorMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  const devices = selected.value.length ? selected.value : Array.from(new Set(co2Raw.value.map(r => r.devicename)))
+  devices.forEach((dev, idx) => {
+    map[dev] = co2DeviceColors[idx % co2DeviceColors.length]
+  })
+  return map
+})
 </script>
 
 <style scoped>
@@ -1070,6 +1135,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 .pill-remove-btn:hover {
   cursor: pointer;
+}
+.co2-pill {
+  cursor: pointer;
+  transition: box-shadow 0.2s, opacity 0.2s;
+}
+.co2-pill:hover {
+  box-shadow: 0 0 0 2px #fff3, 0 2px 8px #0002;
+  opacity: 1;
 }
 </style>
 
