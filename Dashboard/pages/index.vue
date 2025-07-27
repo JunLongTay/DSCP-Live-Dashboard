@@ -31,7 +31,7 @@
             <Menu as="div" class="relative inline-block text-left">
               <div>
                 <MenuButton>
-                  <Button variant="default">
+                  <Button variant="default" class="export-data-btn">
                     Export Data ▼
                   </Button>
                 </MenuButton>
@@ -52,7 +52,7 @@
                     </MenuItem>
                     <MenuItem as="button"
                       @click="downloadFullReport"
-                      class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800"
+                      class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800 export-summary-btn"
                     >
                       Download All Charts + Summary
                     </MenuItem>
@@ -81,7 +81,7 @@
             {{ dev }}
             <button
               @click.stop="remove(dev)"
-              class="ml-2 text-orange-300 hover:text-orange-400 focus:outline-none"
+              class="ml-2 text-orange-300 hover:text-orange-400 focus:outline-none pill-remove-btn"
               aria-label="Remove device"
             >
               ×
@@ -89,7 +89,7 @@
           </span>
           <button
             @click="clearAll"
-            class="ml-2 text-orange-400 text-sm font-semibold hover:underline"
+            class="ml-2 text-orange-400 text-sm font-semibold hover:underline clear-all-btn"
             style="margin-left:auto"
           >
             Clear All
@@ -132,6 +132,7 @@
       <!-- 🔹 Average NPK Levels -->
       <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Average NPK Levels</h2>
       <div v-if="selected.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <!-- NPK Cards -->
         <div
           v-for="card in avgPerDevice"
           :key="card.devicename"
@@ -157,7 +158,14 @@
                 :style="{
                   height: '40px',
                   transition: 'height 0.8s cubic-bezier(0.4,0,0.2,1)',
-                  boxShadow: npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])!=='Optimal' ? '0 0 8px 2px #f87171' : ''
+                  boxShadow:
+                    npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Optimal'
+                      ? '0 0 8px 2px #22c55e'
+                      : npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Low'
+                        ? '0 0 8px 2px #facc15'
+                        : npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='High'
+                          ? '0 0 8px 2px #f87171'
+                          : ''
                 }"
               ></div>
               <span class="mt-1 text-xs text-zinc-400 font-semibold">
@@ -227,11 +235,50 @@
         <div
           v-for="(device, idx) in selected"
           :key="device"
-          class="p-4 rounded shadow border border-orange-500 bg-zinc-900 transition-transform duration-200 hover:scale-105 hover:shadow-2xl"
+          class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-4
+                 transition-transform duration-200 hover:scale-105 hover:shadow-2xl"
           style="will-change: transform;"
         >
+          <!-- Chart Header with pill toggles -->
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex gap-2">
+              <button
+                class="pill flex items-center gap-1 px-3 py-1 rounded-full bg-orange-900 text-orange-100 font-semibold text-xs border border-orange-500"
+                :class="{ 'opacity-100': soilSeriesVisible[device][0], 'opacity-50': !soilSeriesVisible[device][0] }"
+                @click="toggleSeries(device, 0)"
+              >
+                <span class="swatch w-3 h-3 rounded-full bg-orange-400 inline-block"></span>
+                Raw
+              </button>
+              <button
+                class="pill flex items-center gap-1 px-3 py-1 rounded-full bg-blue-900 text-blue-100 font-semibold text-xs border border-blue-500"
+                :class="{ 'opacity-100': soilSeriesVisible[device][1], 'opacity-50': !soilSeriesVisible[device][1] }"
+                @click="toggleSeries(device, 1)"
+              >
+                <span class="swatch w-3 h-3 rounded-full bg-blue-400 inline-block border-dashed border-2 border-blue-400"></span>
+                Smthd.
+              </button>
+              <button
+                class="pill flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-900 text-yellow-100 font-semibold text-xs border border-yellow-500"
+                :class="{ 'opacity-100': soilSeriesVisible[device][2], 'opacity-50': !soilSeriesVisible[device][2] }"
+                @click="toggleSeries(device, 2)"
+              >
+                <span class="swatch w-3 h-3 rounded-full bg-yellow-400 inline-block border-dotted border-2 border-yellow-400"></span>
+                Avg
+              </button>
+            </div>
+            <button
+              @click="downloadSingleSoilChart(idx, device)"
+              class="download-btn flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-700 hover:text-white transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 download-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
+              </svg>
+              Download
+            </button>
+          </div>
           <LineChart
-            :chart-data="soilChartDataSingleDevice(device, 'Soil Temp (°C)')"
+            :chart-data="soilChartDataSingleDeviceWithToggle(device, 'Soil Temp (°C)')"
             :chart-options="soilOptions"
             class="h-60"
             :ref="el => setSoilTempChartRef(el, idx)"
@@ -239,14 +286,6 @@
           />
           <div class="mt-2 flex items-center justify-between w-full">
             <div class="text-center text-orange-400 font-semibold text-base">Chart: Soil Temp - {{ device }}</div>
-            <!-- Standardised Download Button -->
-            <button
-              @click="downloadSingleSoilChart(idx, device)"
-              class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" /></svg>
-              Download
-            </button>
           </div>
         </div>
       </div>
@@ -256,7 +295,7 @@
 
       <!-- 🔸 CO₂ Chart (Actual Only) -->
       <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">CO₂ Levels</h2>
-      <div v-if="selected.length" class="p-4 rounded shadow border border-orange-500 bg-zinc-900 mb-12 transition-transform duration-200 hover:scale-105 hover:shadow-2xl" style="will-change: transform;">
+      <div v-if="selected.length" class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-4 mb-12 transition-transform duration-200 hover:scale-105 hover:shadow-2xl" style="will-change: transform;">
         <LineChart
           :chart-data="co2Data"
           :chart-options="co2Options"
@@ -267,9 +306,11 @@
         <div class="mt-2 flex items-center justify-end w-full">
           <button
             @click="downloadChartImage('co2Chart')"
-            class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold"
+            class="download-btn flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-700 hover:text-white transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 download-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
+            </svg>
             Download
           </button>
         </div>
@@ -294,7 +335,7 @@ import {
   MenuItem, 
   MenuItems, 
 } from '@headlessui/vue'
-import { ref, computed, watchEffect, onMounted, nextTick } from 'vue'
+import { ref, computed, watchEffect, onMounted, nextTick, reactive } from 'vue'
 import type { ChartData, ChartOptions } from 'chart.js'
 import 'chartjs-adapter-date-fns'
 import { Transition } from 'vue'
@@ -511,7 +552,7 @@ function soilChartDataSingleDevice(device: string, label: string): ChartData<'li
         label: `${device} ${label}`,
         data: cleaned,
         borderColor: `hsl(30, 80%, 50%)`,
-        pointRadius: 2,
+        pointRadius: 6, // Increased marker size
         spanGaps: true,
         fill: false,
       },
@@ -533,6 +574,76 @@ function soilChartDataSingleDevice(device: string, label: string): ChartData<'li
         fill: false,
       }
     ]
+  }
+}
+
+// Add reactive state for series visibility per device
+const soilSeriesVisible = reactive<Record<string, [boolean, boolean, boolean]>>({})
+
+// Initialize series visibility for each device
+watchEffect(() => {
+  for (const device of selected.value) {
+    if (!soilSeriesVisible[device]) {
+      soilSeriesVisible[device] = [true, true, true]
+    }
+  }
+})
+
+// Toggle handler
+function toggleSeries(device: string, idx: number) {
+  if (!soilSeriesVisible[device]) return
+  soilSeriesVisible[device][idx] = !soilSeriesVisible[device][idx]
+}
+
+// Chart data builder with toggles
+function soilChartDataSingleDeviceWithToggle(device: string, label: string): ChartData<'line'> {
+  const deviceData = soilRaw.value.filter(r => r.devicename === device)
+  const allTimestamps = deviceData.map(r => r.timestamp).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+  const labels = allTimestamps.map(ts => {
+    const dt = new Date(ts)
+    return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
+  })
+  const temps = deviceData.map(d => d.soil_temp ?? 0)
+  const cleaned = cleanZeros(temps)
+  const smoothed = movingAvg(cleaned, 5)
+  const valid = cleaned.filter(v => v != null) as number[]
+  const avgVal = valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : 0
+  const visible = soilSeriesVisible[device] || [true, true, true]
+  const datasets: ChartData<'line'>['datasets'] = []
+  if (visible[0]) {
+    datasets.push({
+      label: `${device} Raw`,
+      data: cleaned,
+      borderColor: `hsl(30, 80%, 50%)`,
+      pointRadius: 6,
+      spanGaps: true,
+      fill: false,
+    })
+  }
+  if (visible[1]) {
+    datasets.push({
+      label: `${device} Smoothed`,
+      data: smoothed,
+      borderColor: `hsl(210, 80%, 60%)`,
+      borderDash: [6, 6],
+      pointRadius: 0,
+      spanGaps: true,
+      fill: false,
+    })
+  }
+  if (visible[2]) {
+    datasets.push({
+      label: `${device} Avg`,
+      data: Array(labels.length).fill(avgVal),
+      borderColor: `hsl(60, 80%, 40%)`,
+      borderDash: [4, 4],
+      pointRadius: 0,
+      fill: false,
+    })
+  }
+  return {
+    labels,
+    datasets
   }
 }
 
@@ -627,7 +738,7 @@ const co2Data = computed<ChartData<'line'>>(() => {
       label: `${device} CO₂ (Actual) (${CO2_UNIT})`,
       data: values,
       borderColor: `hsl(${(idx * 60) % 360}, 80%, 50%)`,
-      pointRadius: 2,
+      pointRadius: 6, // Increased marker size
       fill: false
     }
   })
@@ -918,6 +1029,47 @@ h1, h2, h3, h4, h5, h6 {
 }
 .animate-fade-in {
   animation: fade-in 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+.pill {
+  transition: opacity 0.2s;
+  cursor: pointer;
+}
+.swatch {
+  display: inline-block;
+  vertical-align: middle;
+}
+.swatch.dashed {
+  border-style: dashed;
+}
+.swatch.dot {
+  border-style: dotted;
+}
+.download-btn:hover {
+  background: #c2410c;
+  color: #fff;
+  border-color: #ea580c;
+  cursor: pointer;
+}
+.download-btn:hover .download-icon {
+  color: #fff;
+  stroke: #fff;
+}
+.download-icon {
+  color: #ea580c;
+  stroke: #ea580c;
+  transition: color 0.2s, stroke 0.2s;
+}
+.clear-all-btn:hover {
+  cursor: pointer;
+}
+.export-data-btn:hover {
+  cursor: pointer;
+}
+.export-summary-btn:hover {
+  cursor: pointer;
+}
+.pill-remove-btn:hover {
+  cursor: pointer;
 }
 </style>
 

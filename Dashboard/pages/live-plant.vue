@@ -183,7 +183,7 @@
                 <!-- Standardised Download Button (same as index.vue) -->
                 <button
                   @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)"
-                  class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold"
+                  class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold active:bg-orange-500 active:text-white"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
@@ -217,7 +217,7 @@
               <!-- Standardised Download Button (same as index.vue) -->
               <button
                 @click="downloadChartImage('forecast-chart', 'forecast-30day.png')"
-                class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold"
+                class="flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold active:bg-orange-500 active:text-white"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
