@@ -150,7 +150,7 @@
             :changeLabel="'vs forecast'"
             :status="statusTag(latestMoisture[device])"
             :isForecast="false"
-            class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl"
+            class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl"
           >
             <template #title>
               <span style="color: #f0d5af;">{{ device }} Latest</span>
@@ -178,7 +178,7 @@
             <div
               v-for="(device, idx) in selected"
               :key="device + '-chart'"
-              class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-6"
+              class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-6"
               style="will-change: transform;"
             >
               <!-- Download button above chart, right aligned -->
@@ -214,7 +214,7 @@
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Moisture Forecast (Next 30 Days)</h2>
         <template v-if="selected.length && forecastChart">
           <div
-            class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl pt-6 pr-6"
+            class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl pt-6 pr-6"
             style="will-change: transform;"
           >
             <div class="flex justify-end items-center w-full">
@@ -569,7 +569,7 @@ function historicalChart(data: MoistureData[], label: string, idx = 0): ChartDat
       data: sliced.map(d => d.moisture).reverse(),
       borderColor: chartPalette[idx % chartPalette.length],
       backgroundColor: chartPalette[idx % chartPalette.length] + '33',
-      pointRadius: 3,
+      pointRadius: 4,
       pointBackgroundColor: chartPalette[idx % chartPalette.length],
       pointBorderColor: chartPalette[idx % chartPalette.length],
       tension: 0.3,
@@ -586,6 +586,9 @@ function getChartOptions(): ChartOptions<'line'> {
       y: {
         min: moistureYAxisRange.value.min,
         max: moistureYAxisRange.value.max,
+        grid: {
+          color: '#666666' // ← Y-axis grid line color
+        },
         ticks: {
           stepSize: 0.5,
           color: '#ff8800',
@@ -595,6 +598,9 @@ function getChartOptions(): ChartOptions<'line'> {
         title: { display: true, text: 'Moisture (%)', color: '#ff8800', font: { size: 16, weight: 'bold' } }
       },
       x: {
+        grid: {
+          color: '#666666' // ← X-axis grid line color
+        },
         ticks: {
           color: '#ff8800',
           font: { size: 14, weight: 'bold' }
@@ -615,7 +621,7 @@ const forecastChart = computed(() => {
     borderColor: chartPalette[idx % chartPalette.length],
     backgroundColor: chartPalette[idx % chartPalette.length] + '33',
     fill: true,
-    pointRadius: 3,
+    pointRadius: 4,
     pointBackgroundColor: chartPalette[idx % chartPalette.length],
     pointBorderColor: chartPalette[idx % chartPalette.length],
   }))
@@ -635,6 +641,9 @@ const forecastOptions = computed<ChartOptions<'line'>>(() => ({
     y: {
       min: forecastChart.value.yMin,
       max: forecastChart.value.yMax,
+      grid: {
+          color: '#666666' // ← Y-axis grid line color
+        },
       ticks: {
         callback: v => `${v}%`,
         color: '#ff8800',
@@ -648,6 +657,9 @@ const forecastOptions = computed<ChartOptions<'line'>>(() => ({
       }
     },
     x: {
+      grid: {
+          color: '#666666' // ← Y-axis grid line color
+        },
       ticks: {
         color: '#ff8800',
         font: { size: 14, weight: 'bold' }
