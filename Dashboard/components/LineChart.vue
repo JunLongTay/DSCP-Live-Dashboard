@@ -47,6 +47,24 @@ const coloredChartData = computed(() => {
 const chartOptions: ChartOptions<'line'> = {
   responsive: true,
   maintainAspectRatio: false,
+  scales: {
+    x: {
+      ticks: {
+        color: '#f77c05'
+      },
+      grid: {
+        color: '#666666' // light grey grid
+      }
+    },
+    y: {
+      ticks: {
+        color: '#f77c05'
+      },
+      grid: {
+        color: '#666666' // light grey grid
+      }
+    }
+  }
   // …any other scales/legend/title config
 }
 </script>

@@ -239,8 +239,20 @@
             :changeLabel="'vs forecast'"
             :status="statusTag(latestMoisture[device])"
             :isForecast="false"
-            class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl"
-          />
+            class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl"
+          >
+            <template #title>
+              <span style="color: #f0d5af;">{{ device }} Latest</span>
+            </template>
+            <template #changeLabel>
+              <span style="color: #f0d5af;">vs forecast</span>
+            </template>
+            <template #footer>
+              <p class="mt-2 text-sm text-orange-200">
+                {{ deviceRecommendations[device] }}
+              </p>
+            </template>
+          </MoistureCard>
         </div>
         <div v-else class="w-full flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
           Please select a device to get started.
@@ -252,7 +264,24 @@
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Recent Soil Moisture Readings</h2>
         <template v-if="selectedDevices.length">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-8 justify-start items-start w-full">
-            <div v-for="(device, idx) in selectedDevices" :key="device + '-chart'" class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-6">
+            <div
+              v-for="(device, idx) in selected"
+              :key="device + '-chart'"
+              class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-6"
+              style="will-change: transform;"
+            >
+              <!-- Download button above chart, right aligned -->
+              <div class="flex justify-end mb-2">
+                <button
+                  @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)"
+                  class="flex items-center gap-2 px-3 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
+                  </svg>
+                  Download
+                </button>
+              </div>
               <div class="relative max-h-[420px] overflow-hidden">
                 <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-72" />
               </div>
@@ -269,8 +298,11 @@
       <!-- 📉 Forecast Chart -->
       <section class="w-full mb-8 flex flex-col items-start">
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Moisture Forecast (Next 30 Days)</h2>
-        <template v-if="selectedDevices.length && forecastChart">
-          <div class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl pt-6 pr-6">
+        <template v-if="selected.length && forecastChart">
+          <div
+            class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl pt-6 pr-6"
+            style="will-change: transform;"
+          >
             <div class="flex justify-end items-center w-full">
               <button @click="downloadChartImage('forecast-chart', 'forecast-30day.png')" class="flex items-center gap-2 px-3 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -589,7 +621,7 @@ function historicalChart(data: MoistureData[], label: string, idx = 0): ChartDat
       data: sliced.map(d => d.moisture).reverse(),
       borderColor: chartPalette[idx % chartPalette.length],
       backgroundColor: chartPalette[idx % chartPalette.length] + '33',
-      pointRadius: 3,
+      pointRadius: 4,
       pointBackgroundColor: chartPalette[idx % chartPalette.length],
       pointBorderColor: chartPalette[idx % chartPalette.length],
       tension: 0.3,
@@ -606,6 +638,9 @@ function getChartOptions(): ChartOptions<'line'> {
       y: {
         min: moistureYAxisRange.value.min,
         max: moistureYAxisRange.value.max,
+        grid: {
+          color: '#666666' // ← Y-axis grid line color
+        },
         ticks: {
           stepSize: 0.5,
           color: '#ff8800',
@@ -615,6 +650,9 @@ function getChartOptions(): ChartOptions<'line'> {
         title: { display: true, text: 'Moisture (%)', color: '#ff8800', font: { size: 16, weight: 'bold' } }
       },
       x: {
+        grid: {
+          color: '#666666' // ← X-axis grid line color
+        },
         ticks: {
           color: '#ff8800',
           font: { size: 14, weight: 'bold' }
@@ -634,7 +672,7 @@ const forecastChart = computed(() => {
     borderColor: chartPalette[idx % chartPalette.length],
     backgroundColor: chartPalette[idx % chartPalette.length] + '33',
     fill: true,
-    pointRadius: 3,
+    pointRadius: 4,
     pointBackgroundColor: chartPalette[idx % chartPalette.length],
     pointBorderColor: chartPalette[idx % chartPalette.length],
   }))
@@ -654,6 +692,9 @@ const forecastOptions = computed<ChartOptions<'line'>>(() => ({
     y: {
       min: forecastChart.value.yMin,
       max: forecastChart.value.yMax,
+      grid: {
+          color: '#666666' // ← Y-axis grid line color
+        },
       ticks: {
         callback: v => `${v}%`,
         color: '#ff8800',
@@ -667,6 +708,9 @@ const forecastOptions = computed<ChartOptions<'line'>>(() => ({
       }
     },
     x: {
+      grid: {
+          color: '#666666' // ← Y-axis grid line color
+        },
       ticks: {
         color: '#ff8800',
         font: { size: 14, weight: 'bold' }

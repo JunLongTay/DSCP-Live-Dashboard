@@ -73,7 +73,6 @@
     <!-- Footer block with logo.webp at the bottom -->
     <footer class="mt-auto px-4 py-3 text-xs text-orange-700 border-t border-orange-900 flex flex-col gap-2 items-center">
       <span>v1.0.0</span>
-      <NuxtLink to="/about" class="hover:underline text-orange-500">Help / About</NuxtLink>
       <img src="/logo.webp" alt="Cute Plant Bot Logo" class="w-16 h-16 mt-2" />
     </footer>
   </aside>

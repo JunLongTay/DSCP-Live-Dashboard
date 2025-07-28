@@ -136,7 +136,7 @@
         <div
           v-for="card in avgPerDevice"
           :key="card.devicename"
-          class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
+          class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
                  transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
           style="will-change: transform;"
         >
@@ -215,7 +215,7 @@
         <div
           v-for="(device, idx) in selected"
           :key="device"
-          class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
+          class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
            transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
           style="will-change: transform;"
         >
@@ -276,7 +276,7 @@
       <!-- 🔸 CO₂ Chart (Actual Only) -->
       <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">CO₂ Levels</h2>
       <div v-if="selected.length"
-        class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6 mb-12 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
+        class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6 mb-12 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
         style="will-change: transform;">
         <!-- Pills and Download button aligned in one row -->
         <div class="flex items-center justify-between mb-2">
@@ -551,7 +551,7 @@ function soilChartDataSingleDevice(device: string, label: string): ChartData<'li
         label: `${device} ${label}`,
         data: cleaned,
         borderColor: `hsl(30, 80%, 50%)`,
-        pointRadius: 6, // Increased marker size
+        pointRadius: 4, // Increased marker size
         spanGaps: true,
         fill: false,
       },
@@ -614,7 +614,7 @@ function soilChartDataSingleDeviceWithToggle(device: string, label: string): Cha
       label: `${device} Raw`,
       data: cleaned,
       borderColor: `hsl(30, 80%, 50%)`,
-      pointRadius: 6,
+      pointRadius: 4,
       spanGaps: true,
       fill: false,
     })
@@ -738,7 +738,7 @@ const co2Data = computed<ChartData<'line'>>(() => {
       label: `${device} CO₂ (Actual) (${CO2_UNIT})`,
       data: values,
       borderColor: co2DeviceColorMap.value[device], // <-- use color map by device name
-      pointRadius: 6,
+      pointRadius: 4,
       fill: false
     }
   })
