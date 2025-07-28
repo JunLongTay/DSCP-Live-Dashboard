@@ -621,7 +621,6 @@ watchEffect(async () => {
 
   const url = `http://localhost:3001/compost-npk?bucket_min=${bucket}&window_min=${windowMin}`
   npkData.value = await $fetch<NPKReading[]>(url)
-  console.log('npkData.value:', npkData.value)
 })
 
 const filteredNpkData = computed(() => {
@@ -731,7 +730,6 @@ watchEffect(async () => {
 
   const url = `http://localhost:3001/soil-temp-co2?bucket_min=${bucket}&window_min=${windowMin}`
   soilRaw.value = await $fetch<SoilReading[]>(url)
-  console.log('soilRaw.value:', soilRaw.value)
 })
 
 const filteredSoilRaw = computed<SoilReading[]>(() => {
@@ -927,7 +925,6 @@ watchEffect(async () => {
   co2Raw.value = await $fetch<CO2Reading[]>(
     `http://localhost:3001/soil-temp-co2?${qs}`
   )
-  console.log('co2Raw.value:', co2Raw.value)
 })
 
 function movingCo2Avg(data: number[], windowSize: number): number[] {
