@@ -65,69 +65,185 @@
         <!-- Divider line below header -->
         <hr class="border-t border-orange-700 mb-4" />
 
-      <div class="w-full mb-8">
+      <!-- 🔹 Combined Location and Device Filter -->
+      <section class="w-full mb-8">
         <div class="flex items-center justify-between mb-2">
-          <label class="font-medium text-orange-300">Filter by Device(s)</label>
-          <span class="text-sm text-orange-200">{{ selected.length }} selected</span>
-        </div>
-
-        <!-- Selected Devices Chips & Clear All -->
-        <div v-if="selected.length" class="flex items-center flex-wrap gap-2 mb-2">
-          <span
-            v-for="dev in selected"
-            :key="dev"
-            class="inline-flex items-center px-4 py-1 rounded-full bg-orange-800 text-orange-100 font-medium text-sm mr-2 animate-fade-in"
-          >
-            {{ dev }}
-            <button
-              @click.stop="remove(dev)"
-              class="ml-2 text-orange-300 hover:text-orange-400 focus:outline-none pill-remove-btn"
-              aria-label="Remove device"
+          <label class="font-medium text-orange-300">Filter by Location & Device</label>
+          <div class="flex gap-2">
+            <button 
+              @click="selectAllDevices" 
+              class="text-sm px-3 py-1 rounded border border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white transition-colors"
             >
-              ×
+              Select All
             </button>
-          </span>
-          <button
-            @click="clearAll"
-            class="ml-2 text-orange-400 text-sm font-semibold hover:underline clear-all-btn"
-            style="margin-left:auto"
-          >
-            Clear All
-          </button>
-        </div>
-
-        <!-- Modal Filter Trigger -->
-        <button
-          @click="showDeviceModal = true"
-          class="w-full border border-orange-500 rounded p-2 bg-zinc-900 text-orange-100 text-left focus:outline-none focus:ring-2 focus:ring-orange-400 mt-3"
-        >
-          Select Devices
-        </button>
-
-        <!-- Device Filter Modal -->
-        <div v-if="showDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div class="bg-zinc-900 border border-orange-500 rounded-lg shadow-lg p-6 w-full max-w-md relative animate-fade-in">
-            <button @click="showDeviceModal = false" class="absolute top-3 right-3 text-orange-400 text-xl font-bold">×</button>
-            <h3 class="text-lg font-bold text-orange-300 mb-3">Select Devices</h3>
-            <input v-model="deviceSearch" type="text" placeholder="Search devices..." class="w-full mb-3 p-2 border border-orange-500 rounded bg-zinc-800 text-orange-100 placeholder-orange-400" />
-            <div class="flex justify-between mb-2 text-orange-400 text-sm">
-              <button @click="selectAllDevices" class="hover:underline">Select All</button>
-              <button @click="clearAllDevices" class="hover:underline">Clear All</button>
-            </div>
-            <div class="max-h-60 overflow-y-auto mb-4">
-              <div v-for="d in filteredDeviceOptions" :key="d" class="flex items-center gap-2 py-1">
-                <input type="checkbox" :id="'dev-' + d" :value="d" v-model="modalSelected" class="accent-orange-500" />
-                <label :for="'dev-' + d" class="text-orange-100">{{ d }}</label>
-              </div>
-            </div>
-            <div class="flex justify-end gap-2 mt-2">
-              <button @click="showDeviceModal = false" class="px-4 py-2 rounded bg-zinc-700 text-orange-200 font-semibold">Cancel</button>
-              <button @click="confirmDeviceSelection" class="px-4 py-2 rounded bg-orange-500 text-white font-bold cursor-pointer">Confirm</button>
-            </div>
+            <button 
+              @click="clearAllDevices" 
+              class="text-sm px-3 py-1 rounded border border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white transition-colors"
+            >
+              Clear All
+            </button>
           </div>
         </div>
-      </div>
-    </div>
+        
+        <!-- Combined Filter Dropdown -->
+        <div class="relative w-full" ref="dropdownRef">
+          <button 
+            @click="toggleFilterDropdown" 
+            class="w-full border border-orange-500 rounded p-3 bg-zinc-900 text-left text-orange-200 flex items-center justify-between hover:border-orange-400 transition-colors"
+          >
+            <div class="flex flex-col gap-1">
+              <span class="text-orange-300 text-sm font-medium">
+                {{ selectedDevices.length }} device{{ selectedDevices.length !== 1 ? 's' : '' }} selected
+              </span>
+              <span class="text-orange-100 text-xs truncate max-w-md" v-if="selectedDevices.length > 0">
+                {{ getSelectedDevicesPreview() }}
+              </span>
+              <span class="text-orange-400 text-xs" v-else>
+                Click to select locations and devices
+              </span>
+            </div>
+            <svg 
+              :class="{'rotate-180': isFilterDropdownOpen}" 
+              class="w-5 h-5 ml-2 transition-transform text-orange-400" 
+              fill="none" 
+              stroke="currentColor" 
+              stroke-width="2" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          
+          <transition name="fade">
+            <div v-if="isFilterDropdownOpen" class="absolute left-0 mt-2 w-full max-h-96 overflow-hidden bg-zinc-900 border border-orange-500 rounded-lg shadow-xl z-50">
+              <!-- Search Bar -->
+              <div class="p-3 border-b border-orange-700">
+                <input 
+                  v-model="searchQuery"
+                  type="text"
+                  placeholder="Search locations or devices..."
+                  class="w-full px-3 py-2 bg-zinc-800 border border-orange-600 rounded text-orange-100 placeholder-orange-400 focus:outline-none focus:border-orange-400 text-sm"
+                />
+              </div>
+              
+              <!-- Filter Options -->
+              <div class="overflow-y-auto max-h-80">
+                <div v-for="location in filteredLocations" :key="location" class="border-b border-orange-800/50 last:border-b-0">
+                  <!-- Location Header -->
+                  <div class="flex items-center gap-2 p-3 bg-zinc-800/50 hover:bg-zinc-800 transition-colors">
+                    <button 
+                      @click="toggleLocationExpansion(location)"
+                      class="flex items-center gap-2 flex-1 text-left"
+                    >
+                      <div class="flex items-center gap-2">
+                        <!-- Expandable Arrow -->
+                        <svg 
+                          :class="{'rotate-90': expandedLocations.includes(location)}" 
+                          class="w-3 h-3 text-orange-400 transition-transform" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          stroke-width="2" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span class="font-medium text-orange-300 text-sm">{{ location }}</span>
+                      </div>
+                    </button>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-orange-400">
+                        {{ getSelectedDevicesInLocation(location) }}/{{ getDevicesInLocation(location).length }}
+                      </span>
+                      <button 
+                        @click.stop="toggleAllDevicesInLocation(location)"
+                        class="text-xs px-2 py-1 rounded border border-orange-600 text-orange-400 hover:bg-orange-600 hover:text-white transition-colors"
+                      >
+                        {{ areAllDevicesSelectedInLocation(location) ? 'Deselect' : 'Select' }} All
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Devices in Location (Collapsible) -->
+                  <transition name="slide-down">
+                    <div v-if="expandedLocations.includes(location)" class="pl-4 bg-zinc-900/50">
+                      <div 
+                        v-for="device in getFilteredDevicesInLocation(location)" 
+                        :key="device"
+                        class="flex items-center gap-2 p-2 hover:bg-zinc-800/30 transition-colors border-l-2 border-orange-700/30"
+                      >
+                        <label class="flex items-center gap-3 cursor-pointer flex-1">
+                          <input 
+                            type="checkbox" 
+                            :value="device" 
+                            :checked="selectedDevices.includes(device)" 
+                            @change="toggleDevice(device)" 
+                            class="accent-orange-500 w-4 h-4" 
+                          />
+                          <div class="flex items-center gap-2">
+                            <svg class="w-3 h-3 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            <span class="text-orange-100 text-sm">{{ device }}</span>
+                          </div>
+                        </label>
+                      </div>
+                      <!-- Show message if no devices match search in this location -->
+                      <div v-if="getFilteredDevicesInLocation(location).length === 0 && searchQuery.trim()" 
+                           class="p-2 text-xs text-orange-400 italic border-l-2 border-orange-700/30">
+                        No devices match "{{ searchQuery }}" in this location
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+                
+                <!-- No Results -->
+                <div v-if="filteredLocations.length === 0" class="p-4 text-center text-orange-400">
+                  No locations or devices found matching "{{ searchQuery }}"
+                </div>
+              </div>
+              
+              <!-- Footer Actions -->
+              <div class="p-3 border-t border-orange-700 bg-zinc-800/50 flex justify-between items-center">
+                <span class="text-xs text-orange-400">
+                  {{ selectedDevices.length }} selected
+                </span>
+                <button 
+                  @click="isFilterDropdownOpen = false" 
+                  class="text-sm px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </transition>
+        </div>
+        
+        <!-- Selected Devices Tags -->
+        <div v-if="selectedDevices.length > 0" class="mt-3 flex flex-wrap gap-2">
+          <div 
+            v-for="device in selectedDevices.slice(0, 6)" 
+            :key="device"
+            class="flex items-center gap-1 px-2 py-1 bg-orange-600/20 border border-orange-600/50 rounded text-orange-200 text-xs"
+          >
+            <span>{{ device }}</span>
+            <button 
+              @click="removeDevice(device)"
+              class="ml-1 text-orange-400 hover:text-orange-200 transition-colors"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div v-if="selectedDevices.length > 6" class="px-2 py-1 bg-orange-600/10 border border-orange-600/30 rounded text-orange-300 text-xs">
+            +{{ selectedDevices.length - 6 }} more
+          </div>
+        </div>
+      </section>
 
       <!-- 🔹 Average NPK Levels -->
       <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Average NPK Levels</h2>
@@ -319,6 +435,7 @@
       </div>
     </div>
   </div>
+</div>
 </template>
 
 <script setup lang="ts">
@@ -339,6 +456,7 @@ import type { ChartData, ChartOptions } from 'chart.js'
 import 'chartjs-adapter-date-fns'
 import { Transition } from 'vue'
 import { Button } from '@/components/ui/button'
+import { onClickOutside } from '@vueuse/core'
 
 // On mount, record the page load time in “HH:mm DD/MM/YYYY” format
 const lastRefresh = ref('')
@@ -359,9 +477,95 @@ interface NPKReading { timestamp: string; nitrogen: number | null; phosphorus: n
 interface SoilReading { timestamp: string; soil_temp: number | null; devicename: string }
 interface CO2Reading   { timestamp: string; co2: number | null; devicename: string;  }
 
+/* ── Device/Location mapping from CSV ---*/
+const deviceLocationMap = [
+  { devicename: "NDS005", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS002 TEST 03", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NUS04", locationname: "NUS RVRC" },
+  { devicename: "NP DS Rack 0", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS007", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP DS Rack 1", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF Plant Pot 01", locationname: "The Red Box Outer Setup" },
+  { devicename: "NDS006", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF Plant Environment 01", locationname: "The Red Box Outer Setup" },
+  { devicename: "NDS011", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP003", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "Centre 03 West Tank 0", locationname: "Centre 03 West" },
+  { devicename: "NP008", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS002 TEST 02", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS004", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF Plant Pot 03", locationname: "The Red Box Outer Setup" },
+  { devicename: "NP006", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "Centre 03 West Tank 0", locationname: "Centre 03 West" },
+  { devicename: "NDS015", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS002", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP004", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP001", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP002", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF The Little Red Farm", locationname: "The Red Box Outer Setup" },
+  { devicename: "NP005", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "Centre 03 West Solar Monitor", locationname: "Centre 03 West" },
+  { devicename: "TEST", locationname: "TEST" },
+  { devicename: "NDS002 TEST 01", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "RC4 01", locationname: "NUS RC4" },
+  { devicename: "NUS05", locationname: "NUS SAVE" },
+  { devicename: "NUS01", locationname: "NUS RC4" },
+  { devicename: "TRF Plant Pot 02", locationname: "The Red Box Outer Setup" },
+  { devicename: "NDS012", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NUS03", locationname: "NUS Pioneer House" },
+  { devicename: "NUS02", locationname: "NUS SAVE" },
+  { devicename: "NDS010", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS009", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF Earthie Wormie", locationname: "The Red Box Outer Setup" },
+  { devicename: "NP007", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS016", locationname: "NUS RC4" },
+  { devicename: "NDS008", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "RC4 02", locationname: "NUS RC4" },
+  { devicename: "RC4 Compost Tank Environment", locationname: "NUS RC4" },
+  { devicename: "RC4 04", locationname: "NUS RC4" },
+  { devicename: "RC4 03", locationname: "NUS RC4" },
+  { devicename: "NP Solar Monitor", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 1 Plant Pot 0", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 4 Plant Pot 0", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 3 Plant Pot 1", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 4 Plant Pot 1", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 2 Plant Pot 1", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 2 Plant Pot 0", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 1 Plant Pot 1", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 3 Plant Pot 0", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Outdoor Plant Rack Env", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NVSS Demo Unit", locationname: "North Vista Secondary School" }
+]
+
+// Build location → devices map
+const locationDeviceMap = computed(() => {
+  const map: Record<string, string[]> = {}
+  for (const entry of deviceLocationMap) {
+    if (!map[entry.locationname]) map[entry.locationname] = []
+    map[entry.locationname].push(entry.devicename)
+  }
+  return map
+})
+
+const locationList = computed(() => Object.keys(locationDeviceMap.value).sort())
+
 /* ── State ───────────────────────── */
 const SELECTED_DEVICES_KEY = 'dashboard_selected_devices'
-const selected = ref<string[]>([])
+// Replace simple selected array with selectedDevices
+const selectedDevices = ref<string[]>([])
+// Update selected to use selectedDevices for backward compatibility
+const selected = computed({
+  get: () => selectedDevices.value,
+  set: (val) => { selectedDevices.value = val }
+})
+
+// Combined filter state
+const isFilterDropdownOpen = ref(false)
+const searchQuery = ref('')
+const expandedLocations = ref<string[]>([])
+
+// Dropdown ref for outside click detection
+const dropdownRef = ref<HTMLElement | null>(null)
 
 // Make device names reactive
 const allDeviceNamesRaw = ref<string[]>([])
@@ -413,6 +617,7 @@ watchEffect(async () => {
 
   const url = `http://localhost:3001/compost-npk?bucket_min=${bucket}&window_min=${windowMin}`
   npkData.value = await $fetch<NPKReading[]>(url)
+  console.log('npkData.value:', npkData.value)
 })
 
 const filteredNpkData = computed(() => {
@@ -507,6 +712,7 @@ watchEffect(async () => {
 
   const url = `http://localhost:3001/soil-temp-co2?bucket_min=${bucket}&window_min=${windowMin}`
   soilRaw.value = await $fetch<SoilReading[]>(url)
+  console.log('soilRaw.value:', soilRaw.value)
 })
 
 const filteredSoilRaw = computed<SoilReading[]>(() => {
@@ -537,6 +743,7 @@ function soilChartDataSingleDevice(device: string, label: string): ChartData<'li
   const allTimestamps = deviceData.map(r => r.timestamp).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
   const labels = allTimestamps.map(ts => {
     const dt = new Date(ts)
+    dt.setHours(dt.getHours() + 8)
     return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
   })
   const temps = deviceData.map(d => d.soil_temp ?? 0)
@@ -600,6 +807,7 @@ function soilChartDataSingleDeviceWithToggle(device: string, label: string): Cha
   const allTimestamps = deviceData.map(r => r.timestamp).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
   const labels = allTimestamps.map(ts => {
     const dt = new Date(ts)
+    dt.setHours(dt.getHours() + 8)
     return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
   })
   const temps = deviceData.map(d => d.soil_temp ?? 0)
@@ -700,6 +908,7 @@ watchEffect(async () => {
   co2Raw.value = await $fetch<CO2Reading[]>(
     `http://localhost:3001/soil-temp-co2?${qs}`
   )
+  console.log('co2Raw.value:', co2Raw.value)
 })
 
 function movingCo2Avg(data: number[], windowSize: number): number[] {
@@ -726,6 +935,7 @@ const co2Data = computed<ChartData<'line'>>(() => {
   const allTimestamps = Array.from(new Set(co2Raw.value.map(r => r.timestamp))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
   const labels = allTimestamps.map(ts => {
     const dt = new Date(ts)
+    dt.setHours(dt.getHours() + 8)
     return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
   })
   // Build dataset for each device
@@ -968,64 +1178,156 @@ const allSelected = computed(() =>
   allDeviceNamesRaw.value.length > 0 && selected.value.length === allDeviceNamesRaw.value.length
 )
 
-// Modal filter state
-const showDeviceModal = ref(false)
-const deviceSearch = ref('')
-const modalSelected = ref<string[]>([])
-
-const filteredDeviceOptions = computed(() => {
-  const search = deviceSearch.value.trim().toLowerCase()
-  if (!search) return allDeviceNamesRaw.value
-  return allDeviceNamesRaw.value.filter(d => d.toLowerCase().includes(search))
-})
-
-function selectAllDevices() {
-  modalSelected.value = [...filteredDeviceOptions.value]
-}
-function clearAllDevices() {
-  modalSelected.value = []
-}
-function confirmDeviceSelection() {
-  selected.value = [...modalSelected.value]
-  co2ChartDevices.value = [...selected.value]
-  showDeviceModal.value = false
+// Filter functions
+function toggleFilterDropdown() {
+  isFilterDropdownOpen.value = !isFilterDropdownOpen.value
 }
 
-// Keep modalSelected in sync with selected when opening modal
-watchEffect(() => {
-  if (showDeviceModal.value) {
-    modalSelected.value = [...selected.value]
+// Filtered locations based on search
+const filteredLocations = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return locationList.value
   }
+  
+  const query = searchQuery.value.toLowerCase()
+  return locationList.value.filter(location => {
+    // Check if location name matches
+    if (location.toLowerCase().includes(query)) {
+      return true
+    }
+    
+    // Check if any device in this location matches
+    const devicesInLocation = locationDeviceMap.value[location] || []
+    return devicesInLocation.some(device => 
+      device.toLowerCase().includes(query)
+    )
+  })
 })
 
-function toggleDevice(dev: string) {
-  if (selected.value.includes(dev)) {
-    selected.value = selected.value.filter(d => d !== dev)
+// Get devices for a specific location, filtered by search
+function getFilteredDevicesInLocation(location: string): string[] {
+  const devices = locationDeviceMap.value[location] || []
+  if (!searchQuery.value.trim()) {
+    return [...devices].sort()
+  }
+  const query = searchQuery.value.toLowerCase()
+  return devices
+    .filter(device => device.toLowerCase().includes(query))
+    .sort()
+}
+
+// Get all devices in a location (unfiltered)
+function getDevicesInLocation(location: string): string[] {
+  return [...(locationDeviceMap.value[location] || [])].sort()
+}
+
+// Get count of selected devices in a location
+function getSelectedDevicesInLocation(location: string): number {
+  const devicesInLocation = getDevicesInLocation(location)
+  return devicesInLocation.filter(device => selectedDevices.value.includes(device)).length
+}
+
+// Check if all devices in a location are selected
+function areAllDevicesSelectedInLocation(location: string): boolean {
+  const devicesInLocation = getDevicesInLocation(location)
+  return devicesInLocation.length > 0 && 
+         devicesInLocation.every(device => selectedDevices.value.includes(device))
+}
+
+// Toggle location expansion (show/hide devices)
+function toggleLocationExpansion(location: string) {
+  if (expandedLocations.value.includes(location)) {
+    expandedLocations.value = expandedLocations.value.filter(loc => loc !== location)
   } else {
-    selected.value = [...selected.value, dev]
+    expandedLocations.value = [...expandedLocations.value, location]
   }
 }
 
-function remove(dev: string) { 
-  selected.value = selected.value.filter(d => d !== dev)
-  co2ChartDevices.value = [...selected.value]
+// Toggle all devices in a location
+function toggleAllDevicesInLocation(location: string) {
+  const devicesInLocation = getDevicesInLocation(location)
+  const allSelected = areAllDevicesSelectedInLocation(location)
+  
+  if (allSelected) {
+    // Remove all devices from this location
+    selectedDevices.value = selectedDevices.value.filter(device => 
+      !devicesInLocation.includes(device)
+    )
+  } else {
+    // Add all devices from this location
+    const newDevices = devicesInLocation.filter(device => 
+      !selectedDevices.value.includes(device)
+    )
+    selectedDevices.value = [...selectedDevices.value, ...newDevices]
+  }
 }
+
+// Toggle individual device
+function toggleDevice(device: string) {
+  if (selectedDevices.value.includes(device)) {
+    selectedDevices.value = selectedDevices.value.filter(d => d !== device)
+  } else {
+    selectedDevices.value = [...selectedDevices.value, device]
+  }
+}
+
+// Remove individual device
+function removeDevice(device: string) {
+  selectedDevices.value = selectedDevices.value.filter(d => d !== device)
+}
+
+// Update existing functions
+function selectAllDevices() {
+  const allDevices = Object.values(locationDeviceMap.value).flat()
+  selectedDevices.value = [...allDevices]
+}
+
+function clearAllDevices() {
+  selectedDevices.value = []
+  expandedLocations.value = []
+}
+
+// Get preview text for selected devices
+function getSelectedDevicesPreview(): string {
+  if (selectedDevices.value.length === 0) return ''
+  if (selectedDevices.value.length <= 2) {
+    return selectedDevices.value.join(', ')
+  }
+  return `${selectedDevices.value.slice(0, 2).join(', ')} and ${selectedDevices.value.length - 2} more`
+}
+
+// Update existing remove and clearAll functions to use new names
+function remove(dev: string) { 
+  removeDevice(dev)
+  co2ChartDevices.value = [...selectedDevices.value]
+}
+
 function clearAll() {
-  selected.value = []
+  clearAllDevices()
   co2ChartDevices.value = []
 }
 
-// State for CO₂ chart device filter
-const co2ChartDevices = ref<string[]>([]);
-
-// Initialize with all selected devices
-watchEffect(() => {
-  if (!co2ChartDevices.value.length && selected.value.length) {
-    co2ChartDevices.value = [...selected.value]
+// Close dropdown on outside click
+onMounted(async () => {
+  // ...existing code...
+  
+  if (dropdownRef.value) {
+    onClickOutside(dropdownRef, () => (isFilterDropdownOpen.value = false))
   }
 })
 
-// Toggle device filter for CO₂ chart
+// Remove old device filter state
+// const showDeviceModal = ref(false)
+// const deviceSearch = ref('')
+// const modalSelected = ref<string[]>([])
+
+// Remove old filter functions
+// const filteredDeviceOptions = computed(() => {
+//   const search = deviceSearch.value.trim().toLowerCase()
+//   if (!search) return allDeviceNamesRaw.value
+//   return allDeviceNamesRaw.value.filter(d => d.toLowerCase().includes(search))
+// })
+
 function toggleCo2Device(dev: string) {
   if (co2ChartDevices.value.includes(dev)) {
     co2ChartDevices.value = co2ChartDevices.value.filter(d => d !== dev)
@@ -1044,6 +1346,12 @@ function getDeviceColor(idx: number) {
 }
 
 // Map device name to color based on its index in selected
+
+const co2ChartDevices = ref<string[]>([])
+
+watch(selectedDevices, (newVal) => {
+  co2ChartDevices.value = [...newVal]
+})
 
 const co2DeviceColorMap = computed(() => {
   const map = {} as Record<string, string>
@@ -1138,6 +1446,40 @@ h1, h2, h3, h4, h5, h6 {
     0 4px 32px 0 #ea580c66,
     0 0 0 2px #ea580c99,
     0 2px 16px #0004;
+}
+
+/* Fade transition for dropdowns */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+/* Slide down animation for device lists */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: top;
+}
+
+.slide-down-enter-from {
+  opacity: 0;
+  transform: scaleY(0);
+  max-height: 0;
+}
+
+.slide-down-leave-to {
+  opacity: 0;
+  transform: scaleY(0);
+  max-height: 0;
+}
+
+.slide-down-enter-to,
+.slide-down-leave-from {
+  opacity: 1;
+  transform: scaleY(1);
+  max-height: 500px;
 }
 </style>
 
