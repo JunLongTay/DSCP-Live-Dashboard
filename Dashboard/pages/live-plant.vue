@@ -7,10 +7,11 @@
     <div class="fixed top-0 left-0 bottom-0 w-64 h-full z-30 border-r-2 border-orange-800 shadow-xl">
       <Sidebar />
     </div>
-    <!-- Main content centered and padded like index.vue -->
+    <!-- Main content centered and padded -->
     <div class="min-h-screen relative z-20 flex flex-col px-6 md:px-12 py-8">
+      
       <!-- 🔝 Header with Sticky Filter Bar -->
-      <div class="sticky z-40 shadow-md border-b border-orange-700 pb-4 mb-8 ">
+      <div class="sticky z-40 shadow-md border-b border-orange-700 pb-4 mb-8">
         <div class="flex items-baseline justify-between mb-4">
           <!-- LEFT: Title + Last refreshed -->
           <div class="flex items-baseline gap-6">
@@ -27,121 +28,209 @@
                 <option value="long">Long (7 Days)</option>
               </select>
             </div>
-            <!-- Export Dropdown -->
-            <div class="relative inline-block text-left">
-              <Menu as="div" class="relative">
-                <div>
-                  <MenuButton as="template">
-                    <Button variant="default">
-                      Export Data ▼
-                    </Button>
-                  </MenuButton>
-                </div>
-                <Transition enter="transition ease-out duration-100" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="transition ease-in duration-75" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
-                  <MenuItems class="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-zinc-900 ring-1 ring-orange-700 ring-opacity-70 focus:outline-none z-50">
-                    <div class="py-1">
-                      <MenuItem>
-                        <div class="px-4 py-2 text-sm text-orange-200 font-semibold">Selected Data</div>
-                      </MenuItem>
-                      <MenuItem>
-                        <button @click="downloadSelectedData('csv')" class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800">
-                          Export as CSV
-                        </button>
-                      </MenuItem>
-                      <MenuItem>
-                        <button @click="downloadSelectedData('xlsx')" class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800">
-                          Export as Excel
-                        </button>
-                      </MenuItem>
-                      <hr class="my-1 border-orange-700" />
-                      <MenuItem>
-                        <div class="px-4 py-2 text-sm text-orange-200 font-semibold">Full Report</div>
-                      </MenuItem>
-                      <MenuItem>
-                        <button @click="downloadFullDashboardReport" class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800">
-                          Download All Charts + Summary
-                        </button>
-                      </MenuItem>
-                    </div>
-                  </MenuItems>
-                </Transition>
-              </Menu>
-            </div>
           </div>
         </div>
       </div>
 
-    <!-- 🔹 Device Slicer -->
+      <!-- 🔹 Combined Location and Device Filter -->
       <section class="pl-0 mb-10">
-  <div class="flex items-center justify-between mb-2">
-          <label class="font-medium text-orange-300">Filter by Device(s)</label>
-          <span class="text-sm text-orange-200">{{ selected.length }} selected</span>
-  </div>
-  <!-- Selected chips -->
-  <div class="flex flex-wrap gap-2 mb-3">
-    <span
-      v-for="d in selected"
-      :key="d"
-            class="bg-orange-900 text-orange-200 px-3 py-0.5 rounded-full flex items-center animate-fade-in"
-    >
-      {{ d }}
-      <button
-        @click="remove(d)"
-        class="ml-1 text-orange-400 hover:text-orange-200 focus:outline-none transition-colors duration-200 cursor-pointer"
-      >
-        ×
-      </button>
-    </span>
-    <button
-      v-if="selected.length"
-      @click="clearAll"
-      class="ml-auto text-sm text-orange-400 hover:underline cursor-pointer"
-    >
-      Clear All
-    </button>
-  </div>
-        <!-- Modal Picker Trigger -->
-        <button @click="showDeviceModal = true" class="w-full border border-orange-500 rounded p-2 bg-zinc-900 text-left text-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-colors duration-200">
-          Select Devices
-        </button>
-        <!-- Modal Picker -->
-        <transition name="fade">
-          <div v-if="showDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div class="bg-zinc-900 border border-orange-500 rounded-lg shadow-lg p-6 w-full max-w-lg relative">
-              <h2 class="text-lg font-bold mb-4 text-orange-400 font-roboto-slab">Select Devices</h2>
-              <input v-model="deviceSearch" type="text" placeholder="Search devices..." class="w-full mb-3 p-2 rounded border border-orange-500 bg-black text-orange-100 focus:outline-none focus:ring-2 focus:ring-orange-400" />
-              <div class="flex justify-between mb-2">
-                <button @click="modalSelectAll" class="text-sm text-orange-400 hover:underline cursor-pointer">Select All</button>
-                <button @click="modalClearAll" class="text-sm text-orange-400 hover:underline cursor-pointer">Clear All</button>
-    </div>
-              <div class="max-h-60 overflow-y-auto mb-4">
-                <div v-if="deviceNamesLoading" class="text-orange-300 text-sm py-2 flex items-center gap-2">
-                  <span class="loader"></span> Loading devices...
-</div>
-                <template v-else>
-                  <label v-for="d in filteredDevices" :key="d" class="flex items-center gap-2 py-1 cursor-pointer text-orange-100 hover:text-orange-400">
-                    <input type="checkbox" :value="d" v-model="modalSelected" class="accent-orange-500" />
-                    {{ d }}
-                  </label>
-                  <div v-if="!filteredDevices.length" class="text-orange-300 text-sm py-2">No devices found.</div>
-                </template>
-</div>
-              <div class="flex justify-end gap-3 mt-4">
-                <button @click="showDeviceModal = false" class="px-4 py-2 rounded bg-zinc-800 text-orange-200 hover:bg-zinc-700">Cancel</button>
-                <button @click="confirmDeviceModal" class="px-4 py-2 rounded bg-orange-600 text-white font-semibold hover:bg-orange-700 cursor-pointer">Confirm</button>
+        <div class="flex items-center justify-between mb-2">
+          <label class="font-medium text-orange-300">Filter by Location & Device</label>
+          <div class="flex gap-2">
+            <button 
+              @click="selectAllDevices" 
+              class="text-sm px-3 py-1 rounded border border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white transition-colors"
+            >
+              Select All
+            </button>
+            <button 
+              @click="clearAllDevices" 
+              class="text-sm px-3 py-1 rounded border border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white transition-colors"
+            >
+              Clear All
+            </button>
+          </div>
+        </div>
+        
+        <!-- Combined Filter Dropdown -->
+        <div class="relative w-full" ref="dropdownRef">
+          <button 
+            @click="toggleFilterDropdown" 
+            class="w-full border border-orange-500 rounded p-3 bg-zinc-900 text-left text-orange-200 flex items-center justify-between hover:border-orange-400 transition-colors"
+          >
+            <div class="flex flex-col gap-1">
+              <span class="text-orange-300 text-sm font-medium">
+                {{ selectedDevices.length }} device{{ selectedDevices.length !== 1 ? 's' : '' }} selected
+              </span>
+              <span class="text-orange-100 text-xs truncate max-w-md" v-if="selectedDevices.length > 0">
+                {{ getSelectedDevicesPreview() }}
+              </span>
+              <span class="text-orange-400 text-xs" v-else>
+                Click to select locations and devices
+              </span>
+            </div>
+            <svg 
+              :class="{'rotate-180': isFilterDropdownOpen}" 
+              class="w-5 h-5 ml-2 transition-transform text-orange-400" 
+              fill="none" 
+              stroke="currentColor" 
+              stroke-width="2" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          
+          <transition name="fade">
+            <div v-if="isFilterDropdownOpen" class="absolute left-0 mt-2 w-full max-h-96 overflow-hidden bg-zinc-900 border border-orange-500 rounded-lg shadow-xl z-50">
+              <!-- Search Bar -->
+              <div class="p-3 border-b border-orange-700">
+                <input 
+                  v-model="searchQuery"
+                  type="text"
+                  placeholder="Search locations or devices..."
+                  class="w-full px-3 py-2 bg-zinc-800 border border-orange-600 rounded text-orange-100 placeholder-orange-400 focus:outline-none focus:border-orange-400 text-sm"
+                />
               </div>
-              <button @click="showDeviceModal = false" class="absolute top-2 right-2 text-orange-400 hover:text-orange-200 text-xl">×</button>
-    </div>
-    </div>
-        </transition>
+              
+              <!-- Filter Options -->
+              <div class="overflow-y-auto max-h-80">
+                <div v-for="location in filteredLocations" :key="location" class="border-b border-orange-800/50 last:border-b-0">
+                  <!-- Location Header -->
+                  <div class="flex items-center gap-2 p-3 bg-zinc-800/50 hover:bg-zinc-800 transition-colors">
+                    <button 
+                      @click="toggleLocationExpansion(location)"
+                      class="flex items-center gap-2 flex-1 text-left"
+                    >
+                      <div class="flex items-center gap-2">
+                        <!-- Expandable Arrow -->
+                        <svg 
+                          :class="{'rotate-90': expandedLocations.includes(location)}" 
+                          class="w-3 h-3 text-orange-400 transition-transform" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          stroke-width="2" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span class="font-medium text-orange-300 text-sm">{{ location }}</span>
+                      </div>
+                    </button>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-orange-400">
+                        {{ getSelectedDevicesInLocation(location) }}/{{ getDevicesInLocation(location).length }}
+                      </span>
+                      <button 
+                        @click.stop="toggleAllDevicesInLocation(location)"
+                        class="text-xs px-2 py-1 rounded border border-orange-600 text-orange-400 hover:bg-orange-600 hover:text-white transition-colors"
+                      >
+                        {{ areAllDevicesSelectedInLocation(location) ? 'Deselect' : 'Select' }} All
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Devices in Location (Collapsible) -->
+                  <transition name="slide-down">
+                    <div v-if="expandedLocations.includes(location)" class="pl-4 bg-zinc-900/50">
+                      <div 
+                        v-for="device in getFilteredDevicesInLocation(location)" 
+                        :key="device"
+                        class="flex items-center gap-2 p-2 hover:bg-zinc-800/30 transition-colors border-l-2 border-orange-700/30"
+                      >
+                        <label class="flex items-center gap-3 cursor-pointer flex-1">
+                          <input 
+                            type="checkbox" 
+                            :value="device" 
+                            :checked="selectedDevices.includes(device)" 
+                            @change="toggleDevice(device)" 
+                            class="accent-orange-500 w-4 h-4" 
+                          />
+                          <div class="flex items-center gap-2">
+                            <svg class="w-3 h-3 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            <span class="text-orange-100 text-sm">{{ device }}</span>
+                          </div>
+                          <!-- Device Status Indicator -->
+                          <div class="ml-auto">
+                            <span 
+                              :class="{
+                                'bg-red-500': getDeviceStatus(device) === 'Dry',
+                                'bg-green-500': getDeviceStatus(device) === 'Healthy',
+                                'bg-blue-500': getDeviceStatus(device) === 'Too Wet',
+                                'bg-gray-500': getDeviceStatus(device) === 'Unknown'
+                              }"
+                              class="w-2 h-2 rounded-full inline-block"
+                              :title="getDeviceStatus(device)"
+                            ></span>
+                          </div>
+                        </label>
+                      </div>
+                      <!-- Show message if no devices match search in this location -->
+                      <div v-if="getFilteredDevicesInLocation(location).length === 0 && searchQuery.trim()" 
+                           class="p-2 text-xs text-orange-400 italic border-l-2 border-orange-700/30">
+                        No devices match "{{ searchQuery }}" in this location
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+                
+                <!-- No Results -->
+                <div v-if="filteredLocations.length === 0" class="p-4 text-center text-orange-400">
+                  No locations or devices found matching "{{ searchQuery }}"
+                </div>
+              </div>
+              
+              <!-- Footer Actions -->
+              <div class="p-3 border-t border-orange-700 bg-zinc-800/50 flex justify-between items-center">
+                <span class="text-xs text-orange-400">
+                  {{ selectedDevices.length }} selected
+                </span>
+                <button 
+                  @click="isFilterDropdownOpen = false" 
+                  class="text-sm px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </transition>
+        </div>
+        
+        <!-- Selected Devices Tags -->
+        <div v-if="selectedDevices.length > 0" class="mt-3 flex flex-wrap gap-2">
+          <div 
+            v-for="device in selectedDevices.slice(0, 6)" 
+            :key="device"
+            class="flex items-center gap-1 px-2 py-1 bg-orange-600/20 border border-orange-600/50 rounded text-orange-200 text-xs"
+          >
+            <span>{{ device }}</span>
+            <button 
+              @click="removeDevice(device)"
+              class="ml-1 text-orange-400 hover:text-orange-200 transition-colors"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div v-if="selectedDevices.length > 6" class="px-2 py-1 bg-orange-600/10 border border-orange-600/30 rounded text-orange-300 text-xs">
+            +{{ selectedDevices.length - 6 }} more
+          </div>
+        </div>
       </section>
-    
+
       <!-- 📊 Moisture Summary Cards -->
       <section class="mb-12">
         <h2 class="text-xl font-semibold mb-4 text-orange-400">Moisture Summary</h2>
-        <div v-if="selected.length" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+        <div v-if="selectedDevices.length" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <MoistureCard
-            v-for="device in selected"
+            v-for="device in selectedDevices"
             :key="device + '-latest'"
             :device="device"
             :title="`${device} Latest`"
@@ -151,19 +240,7 @@
             :status="statusTag(latestMoisture[device])"
             :isForecast="false"
             class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl"
-          >
-            <template #title>
-              <span style="color: #f0d5af;">{{ device }} Latest</span>
-            </template>
-            <template #changeLabel>
-              <span style="color: #f0d5af;">vs forecast</span>
-            </template>
-            <template #footer>
-              <p class="mt-2 text-sm text-orange-200">
-                {{ deviceRecommendations[device] }}
-              </p>
-            </template>
-          </MoistureCard>
+          />
         </div>
         <div v-else class="w-full flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
           Please select a device to get started.
@@ -173,31 +250,11 @@
       <!-- 📈 Historical Charts -->
       <section class="mb-12">
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Recent Soil Moisture Readings</h2>
-        <template v-if="selected.length">
+        <template v-if="selectedDevices.length">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-8 justify-start items-start w-full">
-            <div
-              v-for="(device, idx) in selected"
-              :key="device + '-chart'"
-              class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-6"
-              style="will-change: transform;"
-            >
-              <!-- Download button above chart, right aligned -->
-              <div class="flex justify-end mb-2">
-                <button
-                  @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)"
-                  class="flex items-center gap-2 px-3 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
-                  </svg>
-                  Download
-                </button>
-              </div>
+            <div v-for="(device, idx) in selectedDevices" :key="device + '-chart'" class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-6">
               <div class="relative max-h-[420px] overflow-hidden">
                 <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-72" />
-              </div>
-              <div class="flex justify-between items-center mt-2 text-sm">
-                <span class="text-orange-200">Chart: Historical - {{ device }}</span>
               </div>
             </div>
           </div>
@@ -212,16 +269,10 @@
       <!-- 📉 Forecast Chart -->
       <section class="w-full mb-8 flex flex-col items-start">
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Moisture Forecast (Next 30 Days)</h2>
-        <template v-if="selected.length && forecastChart">
-          <div
-            class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl pt-6 pr-6"
-            style="will-change: transform;"
-          >
+        <template v-if="selectedDevices.length && forecastChart">
+          <div class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl pt-6 pr-6">
             <div class="flex justify-end items-center w-full">
-              <button
-                @click="downloadChartImage('forecast-chart', 'forecast-30day.png')"
-                class="flex items-center gap-2 px-3 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer"
-              >
+              <button @click="downloadChartImage('forecast-chart', 'forecast-30day.png')" class="flex items-center gap-2 px-3 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
                 </svg>
@@ -239,10 +290,10 @@
           </div>
         </template>
       </section>
-  </div>
+
+    </div>
   </div>
 </template>
-
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watchEffect } from 'vue'
@@ -261,14 +312,15 @@ import * as XLSX from 'xlsx-js-style'
 
 import Sidebar from '../components/Sidebar/index.vue'
 import { Button } from '@/components/ui/button'
+import { onClickOutside } from '@vueuse/core'
 
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale, Filler)
 
-// On mount, record the page load time in “HH:mm DD/MM/YYYY” format
+// On mount, record the page load time in "HH:mm DD/MM/YYYY" format
 const lastRefresh = ref('')
 
 onMounted(() => {
-  // Format as “HH:mm DD/MM/YYYY”
+  // Format as "HH:mm DD/MM/YYYY"
   const now = new Date()
   const hours   = String(now.getHours()).padStart(2, '0')
   const minutes = String(now.getMinutes()).padStart(2, '0')
@@ -281,10 +333,10 @@ onMounted(() => {
 // 1️⃣ state to hold the recommendation text
 const recommendation = ref('')
 
-// 1️⃣ Build a map: device → recommendation string
+// 1️⃣ Build a map: device → recommendation string
 const deviceRecommendations = computed<Record<string,string>>(() => {
-  return selected.value.reduce((map, device) => {
-    const stat = statusTag(latestMoisture.value[device])  // “Dry”/“Healthy”/“Too Wet”
+  return selectedDevices.value.reduce((map, device) => {
+    const stat = statusTag(latestMoisture.value[device])  // "Dry"/"Healthy"/"Too Wet"
     if (stat === 'Dry') {
       map[device] = 'Soil is too dry. Consider watering soon.'
     } else if (stat === 'Too Wet') {
@@ -311,8 +363,6 @@ const timeConfigs = {
 }
 
 /* ── State ───────────────────────────── */
-const selected = ref<string[]>([])
-const query = ref('')
 const rawData = ref<MoistureData[]>([])
 
 /* ── Loading State ───────────────────────────── */
@@ -331,9 +381,9 @@ watchEffect(async () => {
 /* ── Download Data ───────────────────────────── */
 /* ── Download Selected Data ───────────────── */
 function downloadSelectedData(format: 'csv' | 'xlsx') {
-  if (!rawData.value.length || !selected.value.length) return;
+  if (!rawData.value.length || !selectedDevices.value.length) return;
 
-  const filtered = rawData.value.filter(d => selected.value.includes(d.devicename));
+  const filtered = rawData.value.filter(d => selectedDevices.value.includes(d.devicename));
   if (!filtered.length) return;
 
   const rows = filtered.map(d => ({
@@ -370,7 +420,7 @@ async function downloadFullDashboardReport(): Promise<void> {
   const wb = XLSX.utils.book_new();
 
   /* 🟢 Summary Sheet */
-  const summary: any[] = selected.value.map(device => {
+  const summary: any[] = selectedDevices.value.map(device => {
     const latest = latestMoisture.value[device] ?? 0;
     const forecast = forecastValues.value[device]?.[29] ?? 0;
     return {
@@ -385,7 +435,7 @@ async function downloadFullDashboardReport(): Promise<void> {
 
   /* 📈 Historical Data Sheet */
   const historical: any[] = [];
-  for (const device of selected.value) {
+  for (const device of selectedDevices.value) {
     for (const d of deviceData.value[device] ?? []) {
       historical.push({
         'Timestamp': new Date(d.timestamp).toISOString(),
@@ -399,7 +449,7 @@ async function downloadFullDashboardReport(): Promise<void> {
 
   /* 🔮 Forecast Data Sheet */
   const forecast: any[] = [];
-  for (const device of selected.value) {
+  for (const device of selectedDevices.value) {
     forecastValues.value[device]?.forEach((val, i) => {
       forecast.push({
         'Device': device,
@@ -414,8 +464,6 @@ async function downloadFullDashboardReport(): Promise<void> {
   /* 💾 Save Workbook */
   XLSX.writeFile(wb, 'soil_moisture_dashboard_report.xlsx');
 }
-
-
 
 /* ── Image Download ───────────────────────────── */
 function downloadChartImage(canvasId: string, filename: string) {
@@ -446,34 +494,6 @@ onMounted(async () => {
   }
 })
 
-/* ── Device Management ───────────────────────────── */
-const allDevices = computed(() => deviceNames.value)
-
-const options = computed(() =>
-  allDevices.value.filter(d => !selected.value.includes(d))
-)
-
-const allSelected = computed(() =>
-  selected.value.length === allDevices.value.length
-)
-
-function toggleAll() {
-  selected.value = allSelected.value ? [] : [...allDevices.value]
-}
-function remove(d: string) {
-  selected.value = selected.value.filter(x => x !== d)
-}
-function clearAll() {
-  selected.value = []
-  query.value = ''
-}
-
-onMounted(() => {
-  if (!selected.value.length && allDevices.value.length) {
-    selected.value = allDevices.value.slice(0, 2)
-  }
-})
-
 /* ── Data Structuring ───────────────────────────── */
 const deviceData = computed(() => {
   const grouped: Record<string, MoistureData[]> = {}
@@ -486,7 +506,7 @@ const deviceData = computed(() => {
 
 const latestMoisture = computed(() => {
   const latest: Record<string, number> = {}
-  for (const device of selected.value) {
+  for (const device of selectedDevices.value) {
     latest[device] = round(deviceData.value[device]?.[0]?.moisture ?? 0)
   }
   return latest
@@ -494,7 +514,7 @@ const latestMoisture = computed(() => {
 
 const forecastValues = computed(() => {
   const forecasted: Record<string, number[]> = {}
-  for (const device of selected.value) {
+  for (const device of selectedDevices.value) {
     forecasted[device] = forecast(deviceData.value[device] ?? [])
   }
   return forecasted
@@ -605,11 +625,10 @@ function getChartOptions(): ChartOptions<'line'> {
   }
 }
 
-
 const forecastChart = computed(() => {
   const labels = [...Array(30)].map((_, i) => `Day ${i + 1}`)
 
-  const datasets = selected.value.map((device, idx) => ({
+  const datasets = selectedDevices.value.map((device, idx) => ({
     label: `${device} Forecast`,
     data: forecastValues.value[device],
     borderColor: chartPalette[idx % chartPalette.length],
@@ -665,7 +684,7 @@ const forecastOptions = computed<ChartOptions<'line'>>(() => ({
 const moistureYAxisRange = computed(() => {
   const allValues: number[] = []
 
-  for (const device of selected.value) {
+  for (const device of selectedDevices.value) {
     const readings = deviceData.value[device] ?? []
     for (const d of readings) {
       allValues.push(d.moisture)
@@ -684,47 +703,224 @@ const moistureYAxisRange = computed(() => {
   }
 })
 
-// Modal picker state
-const showDeviceModal = ref(false)
-const deviceSearch = ref('')
-const modalSelected = ref<string[]>([])
+/* ── Device/Location mapping from CSV ---*/
+const deviceLocationMap = [
+  { devicename: "NDS005", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS002 TEST 03", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NUS04", locationname: "NUS RVRC" },
+  { devicename: "NP DS Rack 0", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS007", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP DS Rack 1", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF Plant Pot 01", locationname: "The Red Box Outer Setup" },
+  { devicename: "NDS006", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF Plant Environment 01", locationname: "The Red Box Outer Setup" },
+  { devicename: "NDS011", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP003", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "Centre 03 West Tank 0", locationname: "Centre 03 West" },
+  { devicename: "NP008", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS002 TEST 02", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS004", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF Plant Pot 03", locationname: "The Red Box Outer Setup" },
+  { devicename: "NP006", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "Centre 03 West Tank 0", locationname: "Centre 03 West" },
+  { devicename: "NDS015", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS002", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP004", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP001", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF The Little Red Farm", locationname: "The Red Box Outer Setup" },
+  { devicename: "NP005", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "Centre 03 West Solar Monitor", locationname: "Centre 03 West" },
+  { devicename: "TEST", locationname: "TEST" },
+  { devicename: "NDS002 TEST 01", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "RC4 01", locationname: "NUS RC4" },
+  { devicename: "NUS05", locationname: "NUS SAVE" },
+  { devicename: "NUS01", locationname: "NUS RC4" },
+  { devicename: "TRF Plant Pot 02", locationname: "The Red Box Outer Setup" },
+  { devicename: "NDS012", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NUS03", locationname: "NUS Pioneer House" },
+  { devicename: "NUS02", locationname: "NUS SAVE" },
+  { devicename: "NDS010", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS009", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF Earthie Wormie", locationname: "The Red Box Outer Setup" },
+  { devicename: "NP007", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS016", locationname: "NUS RC4" },
+  { devicename: "NDS008", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "RC4 02", locationname: "NUS RC4" },
+  { devicename: "RC4 Compost Tank Environment", locationname: "NUS RC4" },
+  { devicename: "RC4 04", locationname: "NUS RC4" },
+  { devicename: "RC4 03", locationname: "NUS RC4" },
+  { devicename: "NP Solar Monitor", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 1 Plant Pot 0", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 4 Plant Pot 0", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 3 Plant Pot 1", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 4 Plant Pot 1", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 2 Plant Pot 1", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 2 Plant Pot 0", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 1 Plant Pot 1", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 3 Plant Pot 0", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Outdoor Plant Rack Env", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NVSS Demo Unit", locationname: "North Vista Secondary School" }
+]
 
-const filteredDevices = computed(() =>
-  options.value.filter(d => d.toLowerCase().includes(deviceSearch.value.toLowerCase()))
-)
+// Build location → devices map
+const locationDeviceMap = computed(() => {
+  const map: Record<string, string[]> = {}
+  for (const entry of deviceLocationMap) {
+    if (!map[entry.locationname]) map[entry.locationname] = []
+    map[entry.locationname].push(entry.devicename)
+  }
+  return map
+})
 
-function modalSelectAll() {
-  modalSelected.value = [...options.value]
-}
-function modalClearAll() {
-  modalSelected.value = []
-}
-function confirmDeviceModal() {
-  selected.value = Array.from(new Set([...selected.value, ...modalSelected.value]))
-  showDeviceModal.value = false
-}
+const locationList = computed(() => Object.keys(locationDeviceMap.value).sort())
 
-watchEffect(() => {
-  // Keep modalSelected in sync with current selection when opening modal
-  if (showDeviceModal.value) {
-    modalSelected.value = [...selected.value]
+// Combined filter state
+const selectedDevices = ref<string[]>([])
+const isFilterDropdownOpen = ref(false)
+const searchQuery = ref('')
+const expandedLocations = ref<string[]>([])
+
+// Dropdown ref for outside click detection
+const dropdownRef = ref<HTMLElement | null>(null)
+
+// Close dropdown on outside click
+onMounted(() => {
+  if (dropdownRef.value) {
+    onClickOutside(dropdownRef, () => (isFilterDropdownOpen.value = false))
   }
 })
 
-// Remove localStorage persistence for selected devices
-watchEffect(() => {
-  // Only restore from localStorage if you want persistence
-  // To disable persistence, simply do nothing here
-  // (Or, if you want to clear selection on reload, set selected.value = [])
+// Filter functions
+function toggleFilterDropdown() {
+  isFilterDropdownOpen.value = !isFilterDropdownOpen.value
+}
+
+// Filtered locations based on search
+const filteredLocations = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return locationList.value
+  }
+  
+  const query = searchQuery.value.toLowerCase()
+  return locationList.value.filter(location => {
+    // Check if location name matches
+    if (location.toLowerCase().includes(query)) {
+      return true
+    }
+    
+    // Check if any device in this location matches
+    const devicesInLocation = locationDeviceMap.value[location] || []
+    return devicesInLocation.some(device => 
+      device.toLowerCase().includes(query)
+    )
+  })
 })
 
-// Set loading to false when all main data is loaded
+// Get devices for a specific location, filtered by search
+function getFilteredDevicesInLocation(location: string): string[] {
+  const devices = locationDeviceMap.value[location] || []
+  if (!searchQuery.value.trim()) {
+    return devices
+  }
+  
+  const query = searchQuery.value.toLowerCase()
+  return devices.filter(device => device.toLowerCase().includes(query))
+}
+
+// Get all devices in a location (unfiltered)
+function getDevicesInLocation(location: string): string[] {
+  return locationDeviceMap.value[location] || []
+}
+
+// Get count of selected devices in a location
+function getSelectedDevicesInLocation(location: string): number {
+  const devicesInLocation = getDevicesInLocation(location)
+  return devicesInLocation.filter(device => selectedDevices.value.includes(device)).length
+}
+
+// Check if all devices in a location are selected
+function areAllDevicesSelectedInLocation(location: string): boolean {
+  const devicesInLocation = getDevicesInLocation(location)
+  return devicesInLocation.length > 0 && 
+         devicesInLocation.every(device => selectedDevices.value.includes(device))
+}
+
+// Toggle location expansion (show/hide devices)
+function toggleLocationExpansion(location: string) {
+  if (expandedLocations.value.includes(location)) {
+    expandedLocations.value = expandedLocations.value.filter(loc => loc !== location)
+  } else {
+    expandedLocations.value = [...expandedLocations.value, location]
+  }
+}
+
+// Toggle all devices in a location
+function toggleAllDevicesInLocation(location: string) {
+  const devicesInLocation = getDevicesInLocation(location)
+  const allSelected = areAllDevicesSelectedInLocation(location)
+  
+  if (allSelected) {
+    // Remove all devices from this location
+    selectedDevices.value = selectedDevices.value.filter(device => 
+      !devicesInLocation.includes(device)
+    )
+  } else {
+    // Add all devices from this location
+    const newDevices = devicesInLocation.filter(device => 
+      !selectedDevices.value.includes(device)
+    )
+    selectedDevices.value = [...selectedDevices.value, ...newDevices]
+  }
+}
+
+// Toggle individual device
+function toggleDevice(device: string) {
+  if (selectedDevices.value.includes(device)) {
+    selectedDevices.value = selectedDevices.value.filter(d => d !== device)
+  } else {
+    selectedDevices.value = [...selectedDevices.value, device]
+  }
+}
+
+// Remove individual device
+function removeDevice(device: string) {
+  selectedDevices.value = selectedDevices.value.filter(d => d !== device)
+}
+
+// Select all devices
+function selectAllDevices() {
+  const allDevices = Object.values(locationDeviceMap.value).flat()
+  selectedDevices.value = [...allDevices]
+}
+
+// Clear all devices
+function clearAllDevices() {
+  selectedDevices.value = []
+  expandedLocations.value = [] // Also collapse all locations when clearing
+}
+
+// Get preview text for selected devices
+function getSelectedDevicesPreview(): string {
+  if (selectedDevices.value.length === 0) return ''
+  if (selectedDevices.value.length <= 2) {
+    return selectedDevices.value.join(', ')
+  }
+  return `${selectedDevices.value.slice(0, 2).join(', ')} and ${selectedDevices.value.length - 2} more`
+}
+
+// Get device status for status indicator
+function getDeviceStatus(device: string): string {
+  const moisture = latestMoisture.value[device]
+  if (moisture === undefined || moisture === 0) return 'Unknown'
+  return statusTag(moisture)
+}
+
 watchEffect(() => {
+  // Set loading to false when all main data is loaded
   if (rawData.value.length || (Array.isArray(rawData.value) && rawData.value.length === 0)) {
     isLoading.value = false
   }
 })
-
 </script>
 
 <style scoped>
@@ -779,5 +975,31 @@ h1, h2, h3, h4, h5, h6 {
 }
 .hover\:glow-orange:hover {
   box-shadow: 0 0 24px 0 rgba(255, 136, 0, 0.18), 0 0 2px 0 rgba(255, 136, 0, 0.12);
+}
+
+/* Slide down animation for device lists */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: top;
+}
+
+.slide-down-enter-from {
+  opacity: 0;
+  transform: scaleY(0);
+  max-height: 0;
+}
+
+.slide-down-leave-to {
+  opacity: 0;
+  transform: scaleY(0);
+  max-height: 0;
+}
+
+.slide-down-enter-to,
+.slide-down-leave-from {
+  opacity: 1;
+  transform: scaleY(1);
+  max-height: 500px;
 }
 </style>

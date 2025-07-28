@@ -33,7 +33,7 @@ JOIN sensordata sd
 JOIN devices d ON dd.deviceid = d.deviceid
 WHERE sd.sensorid IN (8, 1)
   AND dd.devicetimestamp >= NOW() - ($2 || ' minutes')::interval
-  AND d.devicename ~ '^NP00[1-8]$'
+--  AND d.devicename ~ '^NP00[1-8]$'   <-- REMOVE THIS LINE
 GROUP BY timestamp, d.devicename
 ORDER BY timestamp DESC;
 
@@ -48,18 +48,19 @@ JOIN sensors s ON sd.sensorid = s.sensorid
 JOIN devices d ON dd.deviceid = d.deviceid
 WHERE s.sensor = 'Soil Moisture'
   AND dd.devicetimestamp >= NOW() - make_interval(mins := $2)
-  AND d.devicename ILIKE 'NP Group%Plant Pot%'
+--  AND d.devicename ILIKE 'NP Group%Plant Pot%'   <-- REMOVE THIS LINE
 GROUP BY timestamp, d.devicename
 ORDER BY timestamp DESC;
 
 -- name: device-names
 SELECT devicename
 FROM devices
-WHERE devicename ILIKE 'NP Group%Plant Pot%'
+-- WHERE devicename ILIKE 'NP Group%Plant Pot%'   <-- REMOVE THIS LINE
 ORDER BY devicename ASC;
 
 -- name: np-devices
 SELECT devicename
 FROM devices
-WHERE devicename ~ '^NP00[1-8]$'
+-- WHERE devicename ~ '^NP00[1-8]$'   <-- REMOVE THIS LINE
 ORDER BY devicename ASC;
+
