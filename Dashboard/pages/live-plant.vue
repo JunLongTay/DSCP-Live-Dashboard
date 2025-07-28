@@ -265,7 +265,7 @@
         <template v-if="selectedDevices.length">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-8 justify-start items-start w-full">
             <div
-              v-for="(device, idx) in selected"
+              v-for="(device, idx) in selectedDevices"
               :key="device + '-chart'"
               class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-6"
               style="will-change: transform;"
@@ -298,7 +298,7 @@
       <!-- 📉 Forecast Chart -->
       <section class="w-full mb-8 flex flex-col items-start">
         <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Moisture Forecast (Next 30 Days)</h2>
-        <template v-if="selected.length && forecastChart">
+        <template v-if="selectedDevices.length && forecastChart">
           <div
             class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl pt-6 pr-6"
             style="will-change: transform;"
