@@ -263,29 +263,29 @@
           <!-- Nutrient rows -->
           <div v-for="nutrient in ['nitrogen','phosphorus','potassium']" :key="nutrient" class="mb-6 flex items-center gap-4">
             <!-- Status bar/glyph -->
-            <div class="flex flex-col items-center w-16 flex-shrink-0">
+           <div class="flex flex-col items-center w-16 flex-shrink-0">
               <div
                 class="w-2 h-10 rounded-full"
                 :class="{
-                  'bg-green-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Optimal',
-                  'bg-yellow-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Low',
-                  'bg-red-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='High'
+                  'bg-green-500': npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) /1000)==='Optimal',
+                  'bg-yellow-500': npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) /1000)==='Low',
+                  'bg-blue-500': npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) /1000)==='Harvest Immediately'
                 }"
                 :style="{
                   height: '40px',
                   transition: 'height 0.8s cubic-bezier(0.4,0,0.2,1)',
                   boxShadow:
-                    npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Optimal'
+                    npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) / 1000)==='Optimal'
                       ? '0 0 8px 2px #22c55e'
-                      : npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Low'
+                      : npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) / 1000)==='Low'
                         ? '0 0 8px 2px #facc15'
-                        : npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='High'
-                          ? '0 0 8px 2px #f87171'
+                        : npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) / 1000)==='Harvest Immediately'
+                          ? '0 0 8px 2px #3b82f6'
                           : ''
                 }"
               ></div>
-              <span class="mt-1 text-xs text-zinc-400 font-semibold">
-                {{ npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) }}
+              <span class="mt-1 text-xs text-zinc-400 font-semibold text-center">
+                {{ npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) / 1000) }}
               </span>
             </div>
             <!-- Value & label -->
@@ -294,7 +294,12 @@
                 {{ nutrient }}
               </span>
               <span class="text-3xl font-bold text-orange-400 leading-tight">
-                {{ card[nutrient as keyof typeof card] }} {{ NPK_UNIT }}
+                <template v-if="['nitrogen', 'phosphorus', 'potassium'].includes(nutrient)">
+                  {{ (Number(card[nutrient as keyof typeof card]) / 1000).toFixed(3) }} g/kg soil
+                </template>
+                <template v-else>
+                  {{ card[nutrient as keyof typeof card] }} {{ NPK_UNIT }}
+                </template>
               </span>
             </div>
           </div>
@@ -584,16 +589,15 @@ const NPK_UNIT = 'ppm'
 type NPKKey = 'nitrogen' | 'phosphorus' | 'potassium'
 interface NPKThreshold { low: number; high: number }
 const NPK_THRESHOLDS: Record<NPKKey, NPKThreshold> = {
-  nitrogen:   { low: 200, high: 500 },
-  phosphorus: { low: 330, high: 880 },
-  potassium:  { low: 330, high: 880 }
+  nitrogen:   { low: 0.3, high: 0.7 },
+  phosphorus: { low: 0.2, high: 0.5 },
+  potassium:  { low: 0.3, high: 0.8 }
 }
-function npkStatus(key: NPKKey, val: string) {
-  const v = Number(val)
+function npkStatus(key: NPKKey, val: number) {
   const { low, high } = NPK_THRESHOLDS[key]
-  if (isNaN(v)) return '—'
-  if (v < low) return 'Low'
-  if (v > high) return 'High'
+  if (isNaN(val)) return '—'
+  if (val < low) return 'Low'
+  if (val > high) return 'Harvest Immediately'
   return 'Optimal'
 }
 function statusClass(status: string) {
@@ -632,9 +636,10 @@ const avgPerDevice = computed(() => {
     // Show overall average if no device selected
     const data = npkData.value
     if (!data.length) return []
-    const avgField = (f: keyof NPKReading) => (
-      data.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / data.length
-    ).toFixed(1)
+    const avgField = (f: keyof NPKReading) => {
+      const avg = data.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / data.length
+      return Number(avg.toFixed(3))
+    }
     return [{
       devicename: 'All Devices',
       nitrogen: avgField('nitrogen'),
@@ -647,11 +652,12 @@ const avgPerDevice = computed(() => {
     const data = npkData.value.filter(row => row.devicename === device)
     if (!data.length) return {
       devicename: device,
-      nitrogen: '-', phosphorus: '-', potassium: '-'
+      nitrogen: NaN, phosphorus: NaN, potassium: NaN
     }
-    const avgField = (f: keyof NPKReading) => (
-      data.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / data.length
-    ).toFixed(1)
+    const avgField = (f: keyof NPKReading) => {
+      const avg = data.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / data.length
+      return Number(avg.toFixed(3))
+    }
     return {
       devicename: device,
       nitrogen: avgField('nitrogen'),
@@ -668,38 +674,51 @@ const npkRecommendations = computed<Record<string,string>>(() => {
   avgPerDevice.value.forEach(card => {
     const notes: string[] = []
     const name = card.devicename
-    const nStatus = npkStatus('nitrogen',   card.nitrogen)
-    const pStatus = npkStatus('phosphorus', card.phosphorus)
-    const kStatus = npkStatus('potassium',  card.potassium)
+    const nStatus = npkStatus('nitrogen',   Number(card.nitrogen) /1000)
+    const pStatus = npkStatus('phosphorus', Number(card.phosphorus) /1000)
+    const kStatus = npkStatus('potassium',  Number(card.potassium) /1000)
 
     // Nitrogen
+    // Nitrogen
     if (nStatus === 'Low') {
-      notes.push('🟢 Low N: Add more green compost materials (vegetable scraps, coffee grounds, fresh grass clippings).')
-    } else if (nStatus === 'High') {
-      notes.push('🟠 High N: Mix in more brown materials (dried leaves, straw, shredded paper) to balance.')
+      notes.push('🟡 Low N: Add more green compost materials (vegetable scraps, coffee grounds, fresh grass clippings).')
+    } else if (nStatus === 'Harvest Immediately') {
+      notes.push('🔵 High N: Avoid adding too much green material (like fresh grass or food scraps) to maintain balanced nitrogen levels, Harvest compost now.')
+    } else if (nStatus === 'Optimal') {
+      notes.push('🟢 Optimal N: Nitrogen levels are ideal for composting.')
     }
 
     // Phosphorus
     if (pStatus === 'Low') {
-      notes.push('🟢 Low P: Toss in bone meal or crushed eggshells to boost phosphorus levels.')
-    } else if (pStatus === 'High') {
-      notes.push('🟠 High P: Reduce high‑P inputs (e.g. poultry manure) and add carbon‑rich browns.')
+      notes.push('🟡 Low P: Toss in bone meal or crushed eggshells to boost phosphorus levels.')
+    } else if (pStatus === 'Harvest Immediately') {
+      notes.push('🔵 High P: Be cautious with bone meal, manure, and other high-phosphorus materials, use sparingly and balance with carbon-rich materials (leaves, straw) to prevent excess phosphorus, Harvest compost now.')
+    } else if (pStatus === 'Optimal') {
+      notes.push('🟢 Optimal P: Phosphorus levels are ideal for composting.')
     }
 
     // Potassium
     if (kStatus === 'Low') {
-      notes.push('🟢 Low K: Add wood ash or banana peels for a potassium boost.')
-    } else if (kStatus === 'High') {
-      notes.push('🟠 High K: Cut back on wood ash; mix in more greens or browns without K.')
+      notes.push('🟡 Low K: Add wood ash or banana peels for a potassium boost.')
+    } else if (kStatus === 'Harvest Immediately') {
+      notes.push('🔵 High K: Avoid adding wood ash or high-potassium fertilizers in large quantities, mix with carbon-rich materials to avoid excessive potassium levels that could disrupt plant nutrient uptake, Harvest compost now.')
+    } else if (kStatus === 'Optimal') {
+      notes.push('🟢 Optimal K: Potassium levels are ideal for composting.')
+    }
+
+    // If all are optimal, recommend harvest
+    if ([nStatus, pStatus, kStatus].every(s => s === 'Optimal')) {
+      notes.push('✅ All nutrients are optimal, Harvest compost now for best results.')
     }
 
     recs[name] = notes.length
       ? notes.join(' ')
-      : '✅ All nutrients are in good range for healthy composting.'
+      : '✅ All nutrients are optimal, Harvest compost now for best results.'
   })
 
   return recs
 })
+
 /* ── Soil helpers ─────────────────── */
 const TEMP_RANGE  = { low: 25, high: 32 }
 
@@ -927,6 +946,30 @@ const filteredCo2Raw = computed(() => {
   return co2Raw.value.filter(row => selected.value.includes(row.devicename))
 })
 
+function interpolateNulls(arr: (number | null)[]): (number | null)[] {
+  let prevIdx = -1;
+  let prevVal = null;
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] == null) {
+      // Find next non-null
+      let nextIdx = i + 1;
+      while (nextIdx < arr.length && arr[nextIdx] == null) nextIdx++;
+      if (prevVal != null && nextIdx < arr.length && arr[nextIdx] != null) {
+        let nextVal = arr[nextIdx];
+        let steps = nextIdx - prevIdx;
+        for (let j = 1; j < steps; j++) {
+          arr[prevIdx + j] = prevVal + (((nextVal as number) - prevVal) * j / steps);
+        }
+        i = nextIdx - 1;
+      }
+    } else {
+      prevIdx = i;
+      prevVal = arr[i];
+    }
+  }
+  return arr;
+}
+
 // CO2 chart: only actual lines for each device
 const co2Data = computed<ChartData<'line'>>(() => {
   // Use selected devices only
@@ -941,13 +984,13 @@ const co2Data = computed<ChartData<'line'>>(() => {
   // Build dataset for each device
   const datasets = devices.map((device) => {
     const deviceData = co2Raw.value.filter(r => r.devicename === device)
-    // Map to all timestamps
     const dataMap = Object.fromEntries(deviceData.map(r => [r.timestamp, r.co2 ?? null]))
-    const values = allTimestamps.map(ts => dataMap[ts] ?? null)
+    const rawValues = allTimestamps.map(ts => dataMap[ts] ?? null)
+    const values = interpolateNulls([...rawValues])
     return {
       label: `${device} CO₂ (Actual) (${CO2_UNIT})`,
       data: values,
-      borderColor: co2DeviceColorMap.value[device], // <-- use color map by device name
+      borderColor: co2DeviceColorMap.value[device],
       pointRadius: 4,
       fill: false
     }
@@ -1447,7 +1490,28 @@ h1, h2, h3, h4, h5, h6 {
     0 0 0 2px #ea580c99,
     0 2px 16px #0004;
 }
-
+button.text-sm {
+  cursor: pointer;
+}
+.flex.items-center.gap-2.p-3.bg-zinc-800\/50:hover {
+  cursor: pointer;
+}
+button.text-xs {
+  cursor: pointer;
+}
+button.flex.items-center.gap-2.flex-1.text-left {
+  cursor: pointer;
+}
+button.w-full.border.rounded.p-3.bg-zinc-900.text-left.text-orange-200.flex.items-center.justify-between {
+  cursor: pointer;
+}
+input[type="checkbox"] {
+  cursor: pointer;
+}
+.ml-1.text-orange-400:hover,
+.ml-1.text-orange-400 {
+  cursor: pointer;
+}
 /* Fade transition for dropdowns */
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.2s;
