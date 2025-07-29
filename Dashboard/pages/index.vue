@@ -466,6 +466,21 @@ import { onClickOutside } from '@vueuse/core'
 // On mount, record the page load time in “HH:mm DD/MM/YYYY” format
 const lastRefresh = ref('')
 
+const backendAvailable = ref(true);
+
+onMounted(async () => {
+  try {
+    allDeviceNamesRaw.value = await $fetch<string[]>('http://localhost:3001/np-devices');
+    allDeviceNamesRaw.value = await $fetch<string[]>('http://localhost:3001/np-devices');
+    allDeviceNamesRaw.value = await $fetch<string[]>('http://localhost:3001/np-devices');
+    allDeviceNamesRaw.value = await $fetch<string[]>('http://localhost:3001/np-devices');
+    allDeviceNamesRaw.value = await $fetch<string[]>('http://localhost:3001/np-devices');
+    backendAvailable.value = true;
+  } catch (e) {
+    backendAvailable.value = false;
+  }
+});
+
 onMounted(() => {
   // Format as “HH:mm DD/MM/YYYY”
   const now = new Date()
@@ -730,6 +745,7 @@ watchEffect(async () => {
 
   const url = `http://localhost:3001/soil-temp-co2?bucket_min=${bucket}&window_min=${windowMin}`
   soilRaw.value = await $fetch<SoilReading[]>(url)
+  console.log('Fetched soil temperature data:', soilRaw.value) // <-- Added console log
 })
 
 const filteredSoilRaw = computed<SoilReading[]>(() => {
@@ -823,8 +839,7 @@ function soilChartDataSingleDeviceWithToggle(device: string, label: string): Cha
   const deviceData = soilRaw.value.filter(r => r.devicename === device)
   const allTimestamps = deviceData.map(r => r.timestamp).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
   const labels = allTimestamps.map(ts => {
-    const dt = new Date(ts)
-    dt.setHours(dt.getHours() + 8)
+    const dt = new Date(ts)// Adjust for timezone
     return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
   })
   const temps = deviceData.map(d => d.soil_temp ?? 0)
@@ -975,7 +990,6 @@ const co2Data = computed<ChartData<'line'>>(() => {
   const allTimestamps = Array.from(new Set(co2Raw.value.map(r => r.timestamp))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
   const labels = allTimestamps.map(ts => {
     const dt = new Date(ts)
-    dt.setHours(dt.getHours() + 8)
     return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
   })
   // Build dataset for each device
@@ -1543,5 +1557,3 @@ input[type="checkbox"] {
   max-height: 500px;
 }
 </style>
-
-

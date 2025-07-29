@@ -91,7 +91,7 @@ interface Item {
 const items: Item[] = [
   { label: 'Overview',           to: '/',             icon: 'lucide:home' },
   { label: 'Live Plant Dashboard', to: '/live-plant', icon: 'lucide:leaf' },
-  { label: 'Data tables',            to: '/data-viewing',      icon: 'lucide:user-circle' },
+  { label: 'Historical Dashboard',            to: '/historical-dashboard',      icon: 'lucide:user-circle' },
 ]
 
 // System Status logic (dummy data, replace with real API if needed)

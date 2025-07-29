@@ -56,6 +56,5 @@ interface Item {
 /* Icon names can come from any Iconify set that nuxt-icon supports */
 const items: Item[] = [
   { label: 'Overview',     to: '/',             icon: 'lucide:home' },
-  { label: 'Historical Dashboard', to: '/historical-dashboard', icon: 'lucide:bar-chart' }
 ]
 </script>
