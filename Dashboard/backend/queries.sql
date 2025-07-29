@@ -46,19 +46,34 @@ JOIN sensors s ON sd.sensorid = s.sensorid
 JOIN devices d ON dd.deviceid = d.deviceid
 WHERE s.sensor = 'Soil Moisture'
   AND dd.devicetimestamp >= NOW() - make_interval(mins := $2)
---  AND d.devicename ILIKE 'NP Group%Plant Pot%'   <-- REMOVE THIS LINE
+GROUP BY timestamp, d.devicename
+ORDER BY timestamp DESC;
+
+-- name: moisture-all-detailed
+SELECT 
+  to_timestamp(floor(extract('epoch' from dd.devicetimestamp) / ($1 * 60)) * ($1 * 60)) AT TIME ZONE 'UTC' AS timestamp,
+  d.devicename,
+  AVG(sd.value::float) FILTER (WHERE s.sensor = 'Soil Moisture') AS moisture,
+  AVG(sd.value::float) FILTER (WHERE s.sensor = 'Soil Temperature') AS temperature,
+  AVG(sd.value::float) FILTER (WHERE s.sensor = 'Soil Nitrogen') AS npk_n,
+  AVG(sd.value::float) FILTER (WHERE s.sensor = 'Soil Phosphorus') AS npk_p,
+  AVG(sd.value::float) FILTER (WHERE s.sensor = 'Soil Potassium') AS npk_k,
+  AVG(sd.value::float) FILTER (WHERE s.sensor = 'CO2') AS co2
+FROM devicedata dd
+JOIN sensordata sd ON sd.devicedataid = dd.devicedataid
+JOIN sensors s ON sd.sensorid = s.sensorid
+JOIN devices d ON dd.deviceid = d.deviceid
+WHERE dd.devicetimestamp >= NOW() - make_interval(mins := $2)
 GROUP BY timestamp, d.devicename
 ORDER BY timestamp DESC;
 
 -- name: device-names
 SELECT devicename
 FROM devices
--- WHERE devicename ILIKE 'NP Group%Plant Pot%'   <-- REMOVE THIS LINE
 ORDER BY devicename ASC;
 
 -- name: np-devices
 SELECT devicename
 FROM devices
--- WHERE devicename ~ '^NP00[1-8]$'   <-- REMOVE THIS LINE
 ORDER BY devicename ASC;
 

@@ -95,26 +95,7 @@ class MoisturePredictionPipeline:
             ))
         ])
         
-        # Support Vector Regression
-        self.models['SVR'] = Pipeline([
-            ('imputer', SimpleImputer(strategy='median')),
-            ('scaler', RobustScaler()),
-            ('model', SVR(kernel='rbf', C=1.0, gamma='scale', epsilon=0.1))
-        ])
-        
-        # Neural Network
-        self.models['Neural_Network'] = Pipeline([
-            ('imputer', SimpleImputer(strategy='median')),
-            ('scaler', RobustScaler()),
-            ('model', MLPRegressor(
-                hidden_layer_sizes=(100, 50),
-                max_iter=500,
-                random_state=42,
-                early_stopping=True,
-                validation_fraction=0.1
-            ))
-        ])
-    
+
     def train_and_evaluate(self, X, y):
         """Train all models and find the best one"""
         

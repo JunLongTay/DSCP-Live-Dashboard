@@ -29,9 +29,48 @@
               </select>
             </div>
           </div>
+          <!-- Export Dropdown -->
+          <div class="relative inline-block text-left">
+            <Menu as="div" class="relative">
+              <div>
+                <MenuButton as="template">
+                  <Button variant="default">
+                    Export Data ▼
+                  </Button>
+                </MenuButton>
+              </div>
+              <Transition enter="transition ease-out duration-100" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="transition ease-in duration-75" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
+                <MenuItems class="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-zinc-900 ring-1 ring-orange-700 ring-opacity-70 focus:outline-none z-50">
+                  <div class="py-1">
+                    <MenuItem>
+                      <div class="px-4 py-2 text-sm text-orange-200 font-semibold">Selected Data</div>
+                    </MenuItem>
+                    <MenuItem>
+                      <button @click="downloadSelectedData('csv')" class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800">
+                        Export as CSV
+                      </button>
+                    </MenuItem>
+                    <MenuItem>
+                      <button @click="downloadSelectedData('xlsx')" class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800">
+                        Export as Excel
+                      </button>
+                    </MenuItem>
+                    <hr class="my-1 border-orange-700" />
+                    <MenuItem>
+                      <div class="px-4 py-2 text-sm text-orange-200 font-semibold">Full Report</div>
+                    </MenuItem>
+                    <MenuItem>
+                      <button @click="downloadFullDashboardReport" class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800">
+                        Download All Charts + Summary
+                      </button>
+                    </MenuItem>
+                  </div>
+                </MenuItems>
+              </Transition>
+            </Menu>
+          </div>
         </div>
       </div>
-
       <!-- 🔹 Combined Location and Device Filter -->
       <section class="pl-0 mb-10">
         <div class="flex items-center justify-between mb-2">
@@ -328,6 +367,18 @@
 </template>
 
 <script setup lang="ts">
+
+type MoistureData = {
+  timestamp: string;   // Timestamp for each sensor reading
+  devicename: string;  // The name of the device
+  moisture: number;    // Soil moisture value
+  temperature: number | null;  // Soil temperature value (nullable)
+  npk_n: number | null; // Soil Nitrogen (nullable)
+  npk_p: number | null; // Soil Phosphorus (nullable)
+  npk_k: number | null; // Soil Potassium (nullable)
+  co2: number | null;  // CO2 levels (nullable)
+}
+
 import { ref, computed, onMounted, watchEffect } from 'vue'
 import { Line } from 'vue-chartjs'
 import MoistureCard from '../components/MoistureCard.vue'
@@ -338,14 +389,16 @@ import {
   CategoryScale, LinearScale, Filler
 } from 'chart.js'
 import type { ChartData, ChartOptions } from 'chart.js'
-import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
 import { Transition } from 'vue'
-import * as XLSX from 'xlsx-js-style'
-
 import Sidebar from '../components/Sidebar/index.vue'
-import { Button } from '@/components/ui/button'
 import { onClickOutside } from '@vueuse/core'
+import { ML_CONFIG, MLApiService, transformDataForML } from './ml_config_file.js'
+import * as XLSX from 'xlsx';
 
+const mlApiUrl = 'http://localhost:5000' // Your Flask ML API URL
+const mlPredictions = ref<Record<string, any>>({})
+const mlLoading = ref(false)
+const mlError = ref<string | null>(null)
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale, Filler)
 
 // On mount, record the page load time in "HH:mm DD/MM/YYYY" format
@@ -365,26 +418,32 @@ onMounted(() => {
 // 1️⃣ state to hold the recommendation text
 const recommendation = ref('')
 
+// Combined filter state
+const selectedDevices = ref<string[]>([])
+const isFilterDropdownOpen = ref(false)
+const searchQuery = ref('')
+const expandedLocations = ref<string[]>([])
+
 // 1️⃣ Build a map: device → recommendation string
 const deviceRecommendations = computed<Record<string,string>>(() => {
   return selectedDevices.value.reduce((map, device) => {
-    const stat = statusTag(latestMoisture.value[device])  // "Dry"/"Healthy"/"Too Wet"
+    const stat = statusTag(latestMoisture.value[device])
+    const mlInfo = mlPredictions.value[device]
+    const modelUsed = mlInfo?.model_used || 'Linear Regression (Fallback)'
+    
+    let recommendation = ''
     if (stat === 'Dry') {
-      map[device] = 'Soil is too dry. Consider watering soon.'
+      recommendation = 'Soil is too dry. Consider watering soon.'
     } else if (stat === 'Too Wet') {
-      map[device] = 'Soil is too wet. Allow it to dry out before your next watering.'
+      recommendation = 'Soil is too wet. Allow it to dry out before your next watering.'
     } else {
-      map[device] = 'Moisture is healthy. Keep your current schedule.'
+      recommendation = 'Moisture is healthy. Keep your current schedule.'
     }
+    
+    map[device] = `${recommendation} (Model: ${modelUsed})`
     return map
   }, {} as Record<string,string>)
 })
-
-interface MoistureData {
-  timestamp: string
-  devicename: string
-  moisture: number
-}
 
 /* ── Config & Time Range ───────────────────────────── */
 const selectedRange = ref<'short' | 'medium' | 'long'>('short')
@@ -404,7 +463,7 @@ const isLoading = ref(true)
 watchEffect(async () => {
   const config = timeConfigs[selectedRange.value]
   const { data } = await useFetch<MoistureData[]>(
-    'http://localhost:3001/moisture-all',
+    'http://localhost:3001/moisture-detailed',
     { query: config }
   )
   rawData.value = data.value ?? []
@@ -429,7 +488,7 @@ function downloadSelectedData(format: 'csv' | 'xlsx') {
       Object.keys(rows[0]),
       ...rows.map(row => Object.values(row))
     ]
-      .map(r => r.map(val => `"${val}"`).join(','))
+      .map(r => r.map(val => "${val}").join(','))
       .join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -451,7 +510,7 @@ function downloadSelectedData(format: 'csv' | 'xlsx') {
 async function downloadFullDashboardReport(): Promise<void> {
   const wb = XLSX.utils.book_new();
 
-  /* 🟢 Summary Sheet */
+  / 🟢 Summary Sheet /
   const summary: any[] = selectedDevices.value.map(device => {
     const latest = latestMoisture.value[device] ?? 0;
     const forecast = forecastValues.value[device]?.[29] ?? 0;
@@ -465,7 +524,7 @@ async function downloadFullDashboardReport(): Promise<void> {
   const summarySheet = XLSX.utils.json_to_sheet(summary);
   XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
 
-  /* 📈 Historical Data Sheet */
+  / 📈 Historical Data Sheet /
   const historical: any[] = [];
   for (const device of selectedDevices.value) {
     for (const d of deviceData.value[device] ?? []) {
@@ -479,7 +538,7 @@ async function downloadFullDashboardReport(): Promise<void> {
   const historicalSheet = XLSX.utils.json_to_sheet(historical);
   XLSX.utils.book_append_sheet(wb, historicalSheet, 'Historical');
 
-  /* 🔮 Forecast Data Sheet */
+  / 🔮 Forecast Data Sheet /
   const forecast: any[] = [];
   for (const device of selectedDevices.value) {
     forecastValues.value[device]?.forEach((val, i) => {
@@ -493,10 +552,71 @@ async function downloadFullDashboardReport(): Promise<void> {
   const forecastSheet = XLSX.utils.json_to_sheet(forecast);
   XLSX.utils.book_append_sheet(wb, forecastSheet, 'Forecast');
 
-  /* 💾 Save Workbook */
+  / 💾 Save Workbook */
   XLSX.writeFile(wb, 'soil_moisture_dashboard_report.xlsx');
 }
+async function checkMLApiHealth() {
+  try {
+    const response = await fetch(`${mlApiUrl}/health`)
+    const health = await response.json()
+    console.log('ML API Health:', health)
+    return health.model_loaded
+  } catch (error) {
+    console.error('ML API Health check failed:', error)
+    return false
+  }
+}
 
+
+// Function to fetch ML predictions
+async function fetchMLPredictions() {
+  if (!selectedDevices.value.length) return
+
+  mlLoading.value = true
+  mlError.value = null
+
+  try {
+    // Prepare data for batch prediction
+    const devicesData: Record<string, any> = {}
+
+    for (const device of selectedDevices.value) {
+      const recentData = deviceData.value[device]?.slice(0, 50) || []
+      // Use transformDataForML to match ML API expected format
+      const formattedData = transformDataForML(recentData)
+      devicesData[device] = {
+        recent_data: formattedData
+      }
+    }
+
+    const response = await fetch(`${mlApiUrl}/predict/moisture/batch`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        devices: devicesData,
+        days_ahead: 30
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`ML API error: ${response.status}`)
+    }
+
+    const result = await response.json()
+    mlPredictions.value = result.predictions
+
+    // Optionally handle metadata or log
+    // console.log('ML Predictions received:', result)
+
+  } catch (error) {
+    console.error('Error fetching ML predictions:', error)
+    mlError.value = error instanceof Error ? error.message : 'Unknown error occurred'
+  } finally {
+    mlLoading.value = false
+  }
+}
+/* ── Download Data ───────────────────────────── */
 /* ── Image Download ───────────────────────────── */
 function downloadChartImage(canvasId: string, filename: string) {
   const canvas = document.getElementById(canvasId) as HTMLCanvasElement
@@ -523,6 +643,11 @@ onMounted(async () => {
     deviceNames.value = []
   } finally {
     deviceNamesLoading.value = false
+  }
+  // Check if ML API is available
+  const mlApiAvailable = await checkMLApiHealth()
+  if (!mlApiAvailable) {
+    console.warn('ML API is not available, falling back to simple forecasting')
   }
 })
 
@@ -564,6 +689,15 @@ function statusTag(value: number) {
 }
 
 function forecast(data: MoistureData[]): number[] {
+  const deviceName = data[0]?.devicename
+
+  // Use ML predictions if available
+  if (deviceName && mlPredictions.value[deviceName]?.forecast) {
+    const mlForecast = mlPredictions.value[deviceName].forecast
+    return mlForecast.map((item: any) => round(item.predicted_moisture))
+  }
+
+  // Fallback to simple linear regression if ML not available
   const yRaw = data.map(d => d.moisture)
   if (yRaw.length === 0) return Array(30).fill(0)
 
@@ -590,13 +724,38 @@ function forecast(data: MoistureData[]): number[] {
   const slope = den === 0 ? 0 : num / den
   const intercept = yMean - slope * xMean
 
-  return [...Array(30)].map((_, i) => {
-    const xi = n + i
-    const trend = slope * xi + intercept
+  // Initialize predictions array
+  let predictions: number[] = []
+
+  // Use the last known value as the starting point for prediction
+  let lastPrediction = smoothed[smoothed.length - 1]
+
+  // Predict for the next 30 days
+  for (let i = 0; i < 30; i++) {
+    // Apply trend using linear regression formula
+    const trend = slope * (n + i) + intercept
+    
+    // Add jitter to the prediction (you can adjust the range of jitter)
     const jitter = (Math.random() - 0.5) * 0.4
-    return round(trend + jitter)
-  })
+    
+    // The predicted moisture value for the current day
+    const prediction = round(trend + jitter)
+    predictions.push(prediction)
+
+    // Use the predicted value as the starting point for the next day's prediction
+    lastPrediction = prediction
+  }
+
+  return predictions
 }
+
+
+// Add watcher to fetch ML predictions when selected devices or rawData changes
+watchEffect(async () => {
+  if (selectedDevices.value.length > 0 && rawData.value.length > 0) {
+    await fetchMLPredictions()
+  }
+})
 
 /* ── Chart Options ───────────────────────────── */
 const chartPalette = [
@@ -817,12 +976,6 @@ const locationDeviceMap = computed(() => {
 })
 
 const locationList = computed(() => Object.keys(locationDeviceMap.value).sort())
-
-// Combined filter state
-const selectedDevices = ref<string[]>([])
-const isFilterDropdownOpen = ref(false)
-const searchQuery = ref('')
-const expandedLocations = ref<string[]>([])
 
 // Dropdown ref for outside click detection
 const dropdownRef = ref<HTMLElement | null>(null)

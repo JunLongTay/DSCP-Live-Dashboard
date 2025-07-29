@@ -24,12 +24,14 @@ model_loaded = False
 def load_ml_model():
     """Load the trained ML model on startup"""
     global ml_pipeline, model_loaded
-    
+
     try:
         ml_pipeline = MoisturePredictionPipeline()
         ml_pipeline.load_model('models/moisture_predictor.pkl')
         model_loaded = True
         logger.info("ML model loaded successfully")
+        logger.info(f"Loaded model: {ml_pipeline.best_model_name}")
+        logger.info(f"Feature columns: {ml_pipeline.feature_columns}")
     except Exception as e:
         logger.error(f"Failed to load ML model: {e}")
         model_loaded = False
@@ -39,33 +41,39 @@ def prepare_features(device_data):
     Prepare features from recent device data for prediction
     """
     if not device_data:
+        logger.warning("No device data provided to prepare_features")
         return None
-    
+
     # Convert to DataFrame
     df = pd.DataFrame(device_data)
-    
+    logger.info(f"Incoming data columns: {df.columns.tolist()}")
+
     # Ensure timestamp column exists and is datetime
     if 'devicetimestamp' in df.columns:
         df['devicetimestamp'] = pd.to_datetime(df['devicetimestamp'])
-        
+
         # Create time features
         df['hour'] = df['devicetimestamp'].dt.hour
         df['weekday'] = df['devicetimestamp'].dt.weekday
         df['month'] = df['devicetimestamp'].dt.month
         df['day_of_year'] = df['devicetimestamp'].dt.dayofyear
-    
+
     # Select only the features that the model expects
     if ml_pipeline and ml_pipeline.feature_columns:
         available_features = [col for col in ml_pipeline.feature_columns if col in df.columns]
+        logger.info(f"Available features in data: {available_features}")
         df_features = df[available_features]
-        
+
         # Fill missing features with default values
         for col in ml_pipeline.feature_columns:
             if col not in df_features.columns:
+                logger.warning(f"Missing feature '{col}' in input data, filling with 0")
                 df_features[col] = 0  # or appropriate default value
-        
+
+        logger.info(f"Prepared features for prediction: {df_features.columns.tolist()}")
         return df_features[ml_pipeline.feature_columns]
-    
+
+    logger.warning("ml_pipeline or feature_columns not set")
     return df
 
 @app.route('/health', methods=['GET'])
@@ -141,46 +149,51 @@ def predict_moisture_batch():
     """
     if not model_loaded:
         return jsonify({'error': 'ML model not loaded'}), 500
-    
+
     try:
         data = request.get_json()
-        
+
         if not data or 'devices' not in data:
             return jsonify({'error': 'devices data is required'}), 400
-        
+
         devices_data = data['devices']
         days_ahead = data.get('days_ahead', 30)
-        
+
+        logger.info(f"Batch prediction request for {len(devices_data)} devices, days_ahead={days_ahead}")
+
         results = {}
-        
+
         for device_name, device_info in devices_data.items():
             try:
                 recent_data = device_info.get('recent_data', [])
-                
+                logger.info(f"Device '{device_name}' - recent_data count: {len(recent_data)}")
+
                 if not recent_data:
                     results[device_name] = {
                         'error': 'No recent data provided',
                         'forecast': []
                     }
                     continue
-                
+
                 # Prepare features
                 features_df = prepare_features(recent_data)
-                
+                logger.info(f"Device '{device_name}' - features shape: {features_df.shape if features_df is not None else None}")
+
                 if features_df is None or len(features_df) == 0:
                     results[device_name] = {
                         'error': 'Unable to prepare features',
                         'forecast': []
                     }
                     continue
-                
+
                 # Make predictions
                 predictions = ml_pipeline.predict_future(features_df, days_ahead)
-                
+                logger.info(f"Device '{device_name}' - predictions: {predictions[:3]}...")
+
                 # Format forecast data
                 forecast_data = []
                 base_date = datetime.now()
-                
+
                 for i, pred in enumerate(predictions):
                     forecast_date = base_date + timedelta(days=i+1)
                     forecast_data.append({
@@ -188,19 +201,21 @@ def predict_moisture_batch():
                         'date': forecast_date.isoformat(),
                         'predicted_moisture': round(float(pred), 2)
                     })
-                
+
                 results[device_name] = {
                     'forecast': forecast_data,
                     'model_used': ml_pipeline.best_model_name
                 }
-                
+
             except Exception as device_error:
                 logger.error(f"Error predicting for device {device_name}: {device_error}")
                 results[device_name] = {
                     'error': str(device_error),
                     'forecast': []
                 }
-        
+
+        logger.info(f"Batch prediction results: { {k: v.get('model_used', v.get('error')) for k, v in results.items()} }")
+
         return jsonify({
             'predictions': results,
             'metadata': {
@@ -209,7 +224,7 @@ def predict_moisture_batch():
                 'devices_processed': len(devices_data)
             }
         })
-        
+
     except Exception as e:
         logger.error(f"Error in batch prediction: {str(e)}")
         return jsonify({'error': f'Batch prediction failed: {str(e)}'}), 500
