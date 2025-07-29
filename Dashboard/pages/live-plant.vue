@@ -29,6 +29,46 @@
               </select>
             </div>
           </div>
+          <!-- Export Dropdown -->
+          <div class="relative inline-block text-left">
+            <Menu as="div" class="relative">
+              <div>
+                <MenuButton as="template">
+                  <Button variant="default">
+                    Export Data ▼
+                  </Button>
+                </MenuButton>
+              </div>
+              <Transition enter="transition ease-out duration-100" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="transition ease-in duration-75" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
+                <MenuItems class="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-zinc-900 ring-1 ring-orange-700 ring-opacity-70 focus:outline-none z-50">
+                  <div class="py-1">
+                    <MenuItem>
+                      <div class="px-4 py-2 text-sm text-orange-200 font-semibold">Selected Data</div>
+                    </MenuItem>
+                    <MenuItem>
+                      <button @click="downloadSelectedData('csv')" class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800">
+                        Export as CSV
+                      </button>
+                    </MenuItem>
+                    <MenuItem>
+                      <button @click="downloadSelectedData('xlsx')" class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800">
+                        Export as Excel
+                      </button>
+                    </MenuItem>
+                    <hr class="my-1 border-orange-700" />
+                    <MenuItem>
+                      <div class="px-4 py-2 text-sm text-orange-200 font-semibold">Full Report</div>
+                    </MenuItem>
+                    <MenuItem>
+                      <button @click="downloadFullDashboardReport" class="w-full px-4 py-2 text-sm text-orange-100 hover:bg-orange-800">
+                        Download All Charts + Summary
+                      </button>
+                    </MenuItem>
+                  </div>
+                </MenuItems>
+              </Transition>
+            </Menu>
+          </div>
         </div>
       </div>
 
