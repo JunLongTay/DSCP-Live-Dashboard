@@ -125,6 +125,23 @@ app.get('/moisture-all', async (req, res) => {
   }
 });
 
+// 📊 Enriched Moisture Data with Environmental Sensors
+app.get('/moisture-detailed', async (req, res) => {
+  const bucketMin = Math.max(parseInt(req.query.bucket_min) || 2, 1);
+  const windowMin = Math.max(parseInt(req.query.window_min) || 120, bucketMin);
+  const key = `moisture-detailed-${bucketMin}-${windowMin}`;
+  const cached = getCached(key);
+  if (cached) return res.json(cached);
+  try {
+    const { rows } = await pool.query(queries['moisture-all-detailed'], [bucketMin, windowMin]);
+    setCache(key, rows);
+    res.json(rows);
+  } catch (err) {
+    console.error('❌ /moisture-detailed failed:', err);
+    res.status(500).send(err.message);
+  }
+});
+
 app.get('/device-names', async (req, res) => {
   try {
     const { rows } = await pool.query(queries['device-names']);
@@ -160,6 +177,7 @@ app.get('/health', (req, res) => {
 async function warmUpCache() {
   const endpoints = [
     'moisture-all?bucket_min=5&window_min=30',
+    'moisture-detailed?bucket_min=5&window_min=60', 
     'compost-npk?bucket_min=60&window_min=1440',
     'soil-temp-co2?bucket_min=60&window_min=1440',
   ];
@@ -177,6 +195,7 @@ async function warmUpCache() {
     }
   }
 }
+
 
 app.listen(3001, () => {
   console.log('✅ Fully Optimized backend running at http://localhost:3001');
