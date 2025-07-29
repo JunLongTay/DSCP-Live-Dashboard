@@ -14,8 +14,25 @@ def fetch_live_detailed_data():
 def train_and_save_model(df):
     pipeline = MoisturePredictionPipeline()
     pipeline.create_models()
+
+    # Handle missing values
+    df["npk_n"].fillna(0, inplace=True)
+    df["npk_p"].fillna(0, inplace=True)
+    df["npk_k"].fillna(0, inplace=True)
+    df["co2"].fillna(df["co2"].mean(), inplace=True)  # Or 0 for `co2`
+
     X, y, _ = pipeline.prepare_data(df=df)
-    pipeline.train_and_evaluate(X, y)
+
+    # Split data into train and validation sets for evaluation
+    from sklearn.model_selection import train_test_split
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Train and evaluate the model
+    pipeline.train_and_evaluate(X_train, y_train)
+
+    # Evaluate on validation data
+    pipeline.evaluate_model(X_val, y_val)
+
     os.makedirs("models", exist_ok=True)
     pipeline.save_model("models/moisture_predictor.pkl")
 

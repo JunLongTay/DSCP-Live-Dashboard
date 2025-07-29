@@ -155,6 +155,22 @@ class MoisturePredictionPipeline:
         
         return results
     
+    def evaluate_model(self, X_val, y_val):
+        """Evaluate the best model based on validation data."""
+        if self.models:  # Check if there are any models
+            # Use the best model (for example, Random Forest)
+            model = self.models.get(self.best_model_name)  # This assumes 'best_model_name' is set to Random_Forest
+            if model:
+                y_pred = model.predict(X_val)
+                rmse = np.sqrt(mean_squared_error(y_val, y_pred))
+                mae = mean_absolute_error(y_val, y_pred)
+                r2 = r2_score(y_val, y_pred)
+                print(f"Evaluation for {self.best_model_name}: RMSE: {rmse}, MAE: {mae}, R²: {r2}")
+            else:
+                print("No model found in 'self.models'")
+        else:
+            print("No models available to evaluate")
+
     def predict_future(self, recent_data, days_ahead=30):
         """
         Predict future moisture values

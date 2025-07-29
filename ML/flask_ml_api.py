@@ -242,16 +242,6 @@ def model_info():
         'model_loaded': model_loaded
     })
 
-@app.route('/retrain', methods=['POST'])
-def retrain_model():
-    """
-    Retrain the model with new data
-    This is a placeholder - implement based on your needs
-    """
-    return jsonify({
-        'message': 'Model retraining not implemented yet',
-        'status': 'not_implemented'
-    }), 501
 
 if __name__ == '__main__':
     # Load model on startup
