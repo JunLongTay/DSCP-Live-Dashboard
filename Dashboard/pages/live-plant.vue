@@ -394,6 +394,7 @@ import Sidebar from '../components/Sidebar/index.vue'
 import { onClickOutside } from '@vueuse/core'
 import { ML_CONFIG, MLApiService, transformDataForML } from './ml_config_file.js'
 import * as XLSX from 'xlsx';
+import { Menu, MenuButton, MenuItem } from '@headlessui/vue'
 
 const mlApiUrl = 'http://localhost:5000' // Your Flask ML API URL
 const mlPredictions = ref<Record<string, any>>({})
