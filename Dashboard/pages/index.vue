@@ -65,69 +65,185 @@
         <!-- Divider line below header -->
         <hr class="border-t border-orange-700 mb-4" />
 
-      <div class="w-full mb-8">
+      <!-- 🔹 Combined Location and Device Filter -->
+      <section class="w-full mb-8">
         <div class="flex items-center justify-between mb-2">
-          <label class="font-medium text-orange-300">Filter by Device(s)</label>
-          <span class="text-sm text-orange-200">{{ selected.length }} selected</span>
-        </div>
-
-        <!-- Selected Devices Chips & Clear All -->
-        <div v-if="selected.length" class="flex items-center flex-wrap gap-2 mb-2">
-          <span
-            v-for="dev in selected"
-            :key="dev"
-            class="inline-flex items-center px-4 py-1 rounded-full bg-orange-800 text-orange-100 font-medium text-sm mr-2 animate-fade-in"
-          >
-            {{ dev }}
-            <button
-              @click.stop="remove(dev)"
-              class="ml-2 text-orange-300 hover:text-orange-400 focus:outline-none pill-remove-btn"
-              aria-label="Remove device"
+          <label class="font-medium text-orange-300">Filter by Location & Device</label>
+          <div class="flex gap-2">
+            <button 
+              @click="selectAllDevices" 
+              class="text-sm px-3 py-1 rounded border border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white transition-colors"
             >
-              ×
+              Select All
             </button>
-          </span>
-          <button
-            @click="clearAll"
-            class="ml-2 text-orange-400 text-sm font-semibold hover:underline clear-all-btn"
-            style="margin-left:auto"
-          >
-            Clear All
-          </button>
-        </div>
-
-        <!-- Modal Filter Trigger -->
-        <button
-          @click="showDeviceModal = true"
-          class="w-full border border-orange-500 rounded p-2 bg-zinc-900 text-orange-100 text-left focus:outline-none focus:ring-2 focus:ring-orange-400 mt-3"
-        >
-          Select Devices
-        </button>
-
-        <!-- Device Filter Modal -->
-        <div v-if="showDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div class="bg-zinc-900 border border-orange-500 rounded-lg shadow-lg p-6 w-full max-w-md relative animate-fade-in">
-            <button @click="showDeviceModal = false" class="absolute top-3 right-3 text-orange-400 text-xl font-bold">×</button>
-            <h3 class="text-lg font-bold text-orange-300 mb-3">Select Devices</h3>
-            <input v-model="deviceSearch" type="text" placeholder="Search devices..." class="w-full mb-3 p-2 border border-orange-500 rounded bg-zinc-800 text-orange-100 placeholder-orange-400" />
-            <div class="flex justify-between mb-2 text-orange-400 text-sm">
-              <button @click="selectAllDevices" class="hover:underline">Select All</button>
-              <button @click="clearAllDevices" class="hover:underline">Clear All</button>
-            </div>
-            <div class="max-h-60 overflow-y-auto mb-4">
-              <div v-for="d in filteredDeviceOptions" :key="d" class="flex items-center gap-2 py-1">
-                <input type="checkbox" :id="'dev-' + d" :value="d" v-model="modalSelected" class="accent-orange-500" />
-                <label :for="'dev-' + d" class="text-orange-100">{{ d }}</label>
-              </div>
-            </div>
-            <div class="flex justify-end gap-2 mt-2">
-              <button @click="showDeviceModal = false" class="px-4 py-2 rounded bg-zinc-700 text-orange-200 font-semibold">Cancel</button>
-              <button @click="confirmDeviceSelection" class="px-4 py-2 rounded bg-orange-500 text-white font-bold">Confirm</button>
-            </div>
+            <button 
+              @click="clearAllDevices" 
+              class="text-sm px-3 py-1 rounded border border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white transition-colors"
+            >
+              Clear All
+            </button>
           </div>
         </div>
-      </div>
-    </div>
+        
+        <!-- Combined Filter Dropdown -->
+        <div class="relative w-full" ref="dropdownRef">
+          <button 
+            @click="toggleFilterDropdown" 
+            class="w-full border border-orange-500 rounded p-3 bg-zinc-900 text-left text-orange-200 flex items-center justify-between hover:border-orange-400 transition-colors"
+          >
+            <div class="flex flex-col gap-1">
+              <span class="text-orange-300 text-sm font-medium">
+                {{ selectedDevices.length }} device{{ selectedDevices.length !== 1 ? 's' : '' }} selected
+              </span>
+              <span class="text-orange-100 text-xs truncate max-w-md" v-if="selectedDevices.length > 0">
+                {{ getSelectedDevicesPreview() }}
+              </span>
+              <span class="text-orange-400 text-xs" v-else>
+                Click to select locations and devices
+              </span>
+            </div>
+            <svg 
+              :class="{'rotate-180': isFilterDropdownOpen}" 
+              class="w-5 h-5 ml-2 transition-transform text-orange-400" 
+              fill="none" 
+              stroke="currentColor" 
+              stroke-width="2" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          
+          <transition name="fade">
+            <div v-if="isFilterDropdownOpen" class="absolute left-0 mt-2 w-full max-h-96 overflow-hidden bg-zinc-900 border border-orange-500 rounded-lg shadow-xl z-50">
+              <!-- Search Bar -->
+              <div class="p-3 border-b border-orange-700">
+                <input 
+                  v-model="searchQuery"
+                  type="text"
+                  placeholder="Search locations or devices..."
+                  class="w-full px-3 py-2 bg-zinc-800 border border-orange-600 rounded text-orange-100 placeholder-orange-400 focus:outline-none focus:border-orange-400 text-sm"
+                />
+              </div>
+              
+              <!-- Filter Options -->
+              <div class="overflow-y-auto max-h-80">
+                <div v-for="location in filteredLocations" :key="location" class="border-b border-orange-800/50 last:border-b-0">
+                  <!-- Location Header -->
+                  <div class="flex items-center gap-2 p-3 bg-zinc-800/50 hover:bg-zinc-800 transition-colors">
+                    <button 
+                      @click="toggleLocationExpansion(location)"
+                      class="flex items-center gap-2 flex-1 text-left"
+                    >
+                      <div class="flex items-center gap-2">
+                        <!-- Expandable Arrow -->
+                        <svg 
+                          :class="{'rotate-90': expandedLocations.includes(location)}" 
+                          class="w-3 h-3 text-orange-400 transition-transform" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          stroke-width="2" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span class="font-medium text-orange-300 text-sm">{{ location }}</span>
+                      </div>
+                    </button>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-orange-400">
+                        {{ getSelectedDevicesInLocation(location) }}/{{ getDevicesInLocation(location).length }}
+                      </span>
+                      <button 
+                        @click.stop="toggleAllDevicesInLocation(location)"
+                        class="text-xs px-2 py-1 rounded border border-orange-600 text-orange-400 hover:bg-orange-600 hover:text-white transition-colors"
+                      >
+                        {{ areAllDevicesSelectedInLocation(location) ? 'Deselect' : 'Select' }} All
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Devices in Location (Collapsible) -->
+                  <transition name="slide-down">
+                    <div v-if="expandedLocations.includes(location)" class="pl-4 bg-zinc-900/50">
+                      <div 
+                        v-for="device in getFilteredDevicesInLocation(location)" 
+                        :key="device"
+                        class="flex items-center gap-2 p-2 hover:bg-zinc-800/30 transition-colors border-l-2 border-orange-700/30"
+                      >
+                        <label class="flex items-center gap-3 cursor-pointer flex-1">
+                          <input 
+                            type="checkbox" 
+                            :value="device" 
+                            :checked="selectedDevices.includes(device)" 
+                            @change="toggleDevice(device)" 
+                            class="accent-orange-500 w-4 h-4" 
+                          />
+                          <div class="flex items-center gap-2">
+                            <svg class="w-3 h-3 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            <span class="text-orange-100 text-sm">{{ device }}</span>
+                          </div>
+                        </label>
+                      </div>
+                      <!-- Show message if no devices match search in this location -->
+                      <div v-if="getFilteredDevicesInLocation(location).length === 0 && searchQuery.trim()" 
+                           class="p-2 text-xs text-orange-400 italic border-l-2 border-orange-700/30">
+                        No devices match "{{ searchQuery }}" in this location
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+                
+                <!-- No Results -->
+                <div v-if="filteredLocations.length === 0" class="p-4 text-center text-orange-400">
+                  No locations or devices found matching "{{ searchQuery }}"
+                </div>
+              </div>
+              
+              <!-- Footer Actions -->
+              <div class="p-3 border-t border-orange-700 bg-zinc-800/50 flex justify-between items-center">
+                <span class="text-xs text-orange-400">
+                  {{ selectedDevices.length }} selected
+                </span>
+                <button 
+                  @click="isFilterDropdownOpen = false" 
+                  class="text-sm px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </transition>
+        </div>
+        
+        <!-- Selected Devices Tags -->
+        <div v-if="selectedDevices.length > 0" class="mt-3 flex flex-wrap gap-2">
+          <div 
+            v-for="device in selectedDevices.slice(0, 6)" 
+            :key="device"
+            class="flex items-center gap-1 px-2 py-1 bg-orange-600/20 border border-orange-600/50 rounded text-orange-200 text-xs"
+          >
+            <span>{{ device }}</span>
+            <button 
+              @click="removeDevice(device)"
+              class="ml-1 text-orange-400 hover:text-orange-200 transition-colors"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div v-if="selectedDevices.length > 6" class="px-2 py-1 bg-orange-600/10 border border-orange-600/30 rounded text-orange-300 text-xs">
+            +{{ selectedDevices.length - 6 }} more
+          </div>
+        </div>
+      </section>
 
       <!-- 🔹 Average NPK Levels -->
       <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Average NPK Levels</h2>
@@ -136,8 +252,8 @@
         <div
           v-for="card in avgPerDevice"
           :key="card.devicename"
-          class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
-                 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col"
+          class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
+                 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
           style="will-change: transform;"
         >
           <!-- Header -->
@@ -147,29 +263,29 @@
           <!-- Nutrient rows -->
           <div v-for="nutrient in ['nitrogen','phosphorus','potassium']" :key="nutrient" class="mb-6 flex items-center gap-4">
             <!-- Status bar/glyph -->
-            <div class="flex flex-col items-center w-16 flex-shrink-0">
+           <div class="flex flex-col items-center w-16 flex-shrink-0">
               <div
                 class="w-2 h-10 rounded-full"
                 :class="{
-                  'bg-green-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Optimal',
-                  'bg-yellow-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Low',
-                  'bg-red-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='High'
+                  'bg-green-500': npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) /1000)==='Optimal',
+                  'bg-yellow-500': npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) /1000)==='Low',
+                  'bg-blue-500': npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) /1000)==='Harvest Immediately'
                 }"
                 :style="{
                   height: '40px',
                   transition: 'height 0.8s cubic-bezier(0.4,0,0.2,1)',
                   boxShadow:
-                    npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Optimal'
+                    npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) / 1000)==='Optimal'
                       ? '0 0 8px 2px #22c55e'
-                      : npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Low'
+                      : npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) / 1000)==='Low'
                         ? '0 0 8px 2px #facc15'
-                        : npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='High'
-                          ? '0 0 8px 2px #f87171'
+                        : npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) / 1000)==='Harvest Immediately'
+                          ? '0 0 8px 2px #3b82f6'
                           : ''
                 }"
               ></div>
-              <span class="mt-1 text-xs text-zinc-400 font-semibold">
-                {{ npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card]) }}
+              <span class="mt-1 text-xs text-zinc-400 font-semibold text-center">
+                {{ npkStatus(nutrient as NPKKey, Number(card[nutrient as keyof typeof card]) / 1000) }}
               </span>
             </div>
             <!-- Value & label -->
@@ -178,28 +294,13 @@
                 {{ nutrient }}
               </span>
               <span class="text-3xl font-bold text-orange-400 leading-tight">
-                {{ card[nutrient as keyof typeof card] }} {{ NPK_UNIT }}
+                <template v-if="['nitrogen', 'phosphorus', 'potassium'].includes(nutrient)">
+                  {{ (Number(card[nutrient as keyof typeof card]) / 1000).toFixed(3) }} g/kg soil
+                </template>
+                <template v-else>
+                  {{ card[nutrient as keyof typeof card] }} {{ NPK_UNIT }}
+                </template>
               </span>
-            </div>
-            <!-- Gauge bar -->
-            <div class="flex-1 flex items-center min-w-0">
-              <div class="w-full h-2 bg-gray-900 rounded overflow-hidden flex items-center">
-                <div
-                  class="h-full rounded transition-all duration-700"
-                  :class="{
-                    'bg-green-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Optimal',
-                    'bg-yellow-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='Low',
-                    'bg-red-500': npkStatus(nutrient as NPKKey, card[nutrient as keyof typeof card])==='High'
-                  }"
-                  :style="{
-                    width: `${Math.min(100, Math.max(0,
-                      ((Number(card[nutrient as NPKKey]) - NPK_THRESHOLDS[nutrient as NPKKey].low)
-                        / (NPK_THRESHOLDS[nutrient as NPKKey].high - NPK_THRESHOLDS[nutrient as NPKKey].low))
-                      * 100
-                    ))}%`
-                  }"
-                ></div>
-              </div>
             </div>
           </div>
           <!-- Recommendations accordion -->
@@ -235,8 +336,8 @@
         <div
           v-for="(device, idx) in selected"
           :key="device"
-          class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-4
-                 transition-transform duration-200 hover:scale-105 hover:shadow-2xl"
+          class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
+           transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
           style="will-change: transform;"
         >
           <!-- Chart Header with pill toggles -->
@@ -295,27 +396,27 @@
 
       <!-- 🔸 CO₂ Chart (Actual Only) -->
       <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">CO₂ Levels</h2>
-      <!-- Pills for CO₂ devices -->
-      <div v-if="selected.length" class="flex flex-wrap gap-2 mb-2">
-        <span
-          v-for="(device, idx) in selected"
-          :key="device"
-          class="co2-pill inline-flex items-center px-4 py-1 rounded-full font-medium text-sm"
-          :style="{
-            background: co2DeviceColorMap[device],
-            color: '#fff',
-            border: `2px solid ${co2DeviceColorMap[device]}`,
-            opacity: co2ChartDevices.includes(device) ? 1 : 0.5
-          }"
-          @click="toggleCo2Device(device)"
-        >
-          {{ device }}
-        </span>
-      </div>
-      <div v-if="selected.length" class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-4 mb-12 transition-transform duration-200 hover:scale-105 hover:shadow-2xl" style="will-change: transform;">
-        <!-- Chart Header with download button aligned right -->
+      <div v-if="selected.length"
+        class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6 mb-12 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
+        style="will-change: transform;">
+        <!-- Pills and Download button aligned in one row -->
         <div class="flex items-center justify-between mb-2">
-          <div></div>
+          <div class="flex flex-wrap gap-2">
+            <span
+              v-for="(device, idx) in co2ChartDevices"
+              :key="device"
+              class="co2-pill font-semibold text-xs rounded-full px-4 py-1 flex items-center border"
+              :style="{
+                background: co2DeviceColorMap[device],
+                color: '#fff',
+                borderColor: co2DeviceColorMap[device],
+                opacity: co2ChartDevices.includes(device) ? 1 : 0.5
+              }"
+              @click="toggleCo2Device(device)"
+            >
+              {{ device }}
+            </span>
+          </div>
           <button
             @click="downloadChartImage('co2Chart')"
             class="download-btn flex items-center gap-2 px-2 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-700 hover:text-white transition-colors"
@@ -339,6 +440,7 @@
       </div>
     </div>
   </div>
+</div>
 </template>
 
 <script setup lang="ts">
@@ -359,6 +461,7 @@ import type { ChartData, ChartOptions } from 'chart.js'
 import 'chartjs-adapter-date-fns'
 import { Transition } from 'vue'
 import { Button } from '@/components/ui/button'
+import { onClickOutside } from '@vueuse/core'
 
 // On mount, record the page load time in “HH:mm DD/MM/YYYY” format
 const lastRefresh = ref('')
@@ -379,9 +482,95 @@ interface NPKReading { timestamp: string; nitrogen: number | null; phosphorus: n
 interface SoilReading { timestamp: string; soil_temp: number | null; devicename: string }
 interface CO2Reading   { timestamp: string; co2: number | null; devicename: string;  }
 
+/* ── Device/Location mapping from CSV ---*/
+const deviceLocationMap = [
+  { devicename: "NDS005", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS002 TEST 03", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NUS04", locationname: "NUS RVRC" },
+  { devicename: "NP DS Rack 0", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS007", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP DS Rack 1", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF Plant Pot 01", locationname: "The Red Box Outer Setup" },
+  { devicename: "NDS006", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF Plant Environment 01", locationname: "The Red Box Outer Setup" },
+  { devicename: "NDS011", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP003", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "Centre 03 West Tank 0", locationname: "Centre 03 West" },
+  { devicename: "NP008", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS002 TEST 02", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS004", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF Plant Pot 03", locationname: "The Red Box Outer Setup" },
+  { devicename: "NP006", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "Centre 03 West Tank 0", locationname: "Centre 03 West" },
+  { devicename: "NDS015", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS002", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP004", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP001", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NP002", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF The Little Red Farm", locationname: "The Red Box Outer Setup" },
+  { devicename: "NP005", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "Centre 03 West Solar Monitor", locationname: "Centre 03 West" },
+  { devicename: "TEST", locationname: "TEST" },
+  { devicename: "NDS002 TEST 01", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "RC4 01", locationname: "NUS RC4" },
+  { devicename: "NUS05", locationname: "NUS SAVE" },
+  { devicename: "NUS01", locationname: "NUS RC4" },
+  { devicename: "TRF Plant Pot 02", locationname: "The Red Box Outer Setup" },
+  { devicename: "NDS012", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NUS03", locationname: "NUS Pioneer House" },
+  { devicename: "NUS02", locationname: "NUS SAVE" },
+  { devicename: "NDS010", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS009", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "TRF Earthie Wormie", locationname: "The Red Box Outer Setup" },
+  { devicename: "NP007", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "NDS016", locationname: "NUS RC4" },
+  { devicename: "NDS008", locationname: "Ngee Ann Polytechnic DS Composting Room" },
+  { devicename: "RC4 02", locationname: "NUS RC4" },
+  { devicename: "RC4 Compost Tank Environment", locationname: "NUS RC4" },
+  { devicename: "RC4 04", locationname: "NUS RC4" },
+  { devicename: "RC4 03", locationname: "NUS RC4" },
+  { devicename: "NP Solar Monitor", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 1 Plant Pot 0", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 4 Plant Pot 0", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 3 Plant Pot 1", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 4 Plant Pot 1", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 2 Plant Pot 1", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 2 Plant Pot 0", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 1 Plant Pot 1", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Group 3 Plant Pot 0", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NP Outdoor Plant Rack Env", locationname: "Ngee Ann Polytechnic Outdoor Plant Rack" },
+  { devicename: "NVSS Demo Unit", locationname: "North Vista Secondary School" }
+]
+
+// Build location → devices map
+const locationDeviceMap = computed(() => {
+  const map: Record<string, string[]> = {}
+  for (const entry of deviceLocationMap) {
+    if (!map[entry.locationname]) map[entry.locationname] = []
+    map[entry.locationname].push(entry.devicename)
+  }
+  return map
+})
+
+const locationList = computed(() => Object.keys(locationDeviceMap.value).sort())
+
 /* ── State ───────────────────────── */
 const SELECTED_DEVICES_KEY = 'dashboard_selected_devices'
-const selected = ref<string[]>([])
+// Replace simple selected array with selectedDevices
+const selectedDevices = ref<string[]>([])
+// Update selected to use selectedDevices for backward compatibility
+const selected = computed({
+  get: () => selectedDevices.value,
+  set: (val) => { selectedDevices.value = val }
+})
+
+// Combined filter state
+const isFilterDropdownOpen = ref(false)
+const searchQuery = ref('')
+const expandedLocations = ref<string[]>([])
+
+// Dropdown ref for outside click detection
+const dropdownRef = ref<HTMLElement | null>(null)
 
 // Make device names reactive
 const allDeviceNamesRaw = ref<string[]>([])
@@ -400,16 +589,15 @@ const NPK_UNIT = 'ppm'
 type NPKKey = 'nitrogen' | 'phosphorus' | 'potassium'
 interface NPKThreshold { low: number; high: number }
 const NPK_THRESHOLDS: Record<NPKKey, NPKThreshold> = {
-  nitrogen:   { low: 200, high: 500 },
-  phosphorus: { low: 330, high: 880 },
-  potassium:  { low: 330, high: 880 }
+  nitrogen:   { low: 0.3, high: 0.7 },
+  phosphorus: { low: 0.2, high: 0.5 },
+  potassium:  { low: 0.3, high: 0.8 }
 }
-function npkStatus(key: NPKKey, val: string) {
-  const v = Number(val)
+function npkStatus(key: NPKKey, val: number) {
   const { low, high } = NPK_THRESHOLDS[key]
-  if (isNaN(v)) return '—'
-  if (v < low) return 'Low'
-  if (v > high) return 'High'
+  if (isNaN(val)) return '—'
+  if (val < low) return 'Low'
+  if (val > high) return 'Harvest Immediately'
   return 'Optimal'
 }
 function statusClass(status: string) {
@@ -447,9 +635,10 @@ const avgPerDevice = computed(() => {
     // Show overall average if no device selected
     const data = npkData.value
     if (!data.length) return []
-    const avgField = (f: keyof NPKReading) => (
-      data.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / data.length
-    ).toFixed(1)
+    const avgField = (f: keyof NPKReading) => {
+      const avg = data.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / data.length
+      return Number(avg.toFixed(3))
+    }
     return [{
       devicename: 'All Devices',
       nitrogen: avgField('nitrogen'),
@@ -462,11 +651,12 @@ const avgPerDevice = computed(() => {
     const data = npkData.value.filter(row => row.devicename === device)
     if (!data.length) return {
       devicename: device,
-      nitrogen: '-', phosphorus: '-', potassium: '-'
+      nitrogen: NaN, phosphorus: NaN, potassium: NaN
     }
-    const avgField = (f: keyof NPKReading) => (
-      data.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / data.length
-    ).toFixed(1)
+    const avgField = (f: keyof NPKReading) => {
+      const avg = data.reduce((sum, d) => sum + (Number(d[f]) || 0), 0) / data.length
+      return Number(avg.toFixed(3))
+    }
     return {
       devicename: device,
       nitrogen: avgField('nitrogen'),
@@ -483,38 +673,51 @@ const npkRecommendations = computed<Record<string,string>>(() => {
   avgPerDevice.value.forEach(card => {
     const notes: string[] = []
     const name = card.devicename
-    const nStatus = npkStatus('nitrogen',   card.nitrogen)
-    const pStatus = npkStatus('phosphorus', card.phosphorus)
-    const kStatus = npkStatus('potassium',  card.potassium)
+    const nStatus = npkStatus('nitrogen',   Number(card.nitrogen) /1000)
+    const pStatus = npkStatus('phosphorus', Number(card.phosphorus) /1000)
+    const kStatus = npkStatus('potassium',  Number(card.potassium) /1000)
 
     // Nitrogen
+    // Nitrogen
     if (nStatus === 'Low') {
-      notes.push('🟢 Low N: Add more green compost materials (vegetable scraps, coffee grounds, fresh grass clippings).')
-    } else if (nStatus === 'High') {
-      notes.push('🟠 High N: Mix in more brown materials (dried leaves, straw, shredded paper) to balance.')
+      notes.push('🟡 Low N: Add more green compost materials (vegetable scraps, coffee grounds, fresh grass clippings).')
+    } else if (nStatus === 'Harvest Immediately') {
+      notes.push('🔵 High N: Avoid adding too much green material (like fresh grass or food scraps) to maintain balanced nitrogen levels, Harvest compost now.')
+    } else if (nStatus === 'Optimal') {
+      notes.push('🟢 Optimal N: Nitrogen levels are ideal for composting.')
     }
 
     // Phosphorus
     if (pStatus === 'Low') {
-      notes.push('🟢 Low P: Toss in bone meal or crushed eggshells to boost phosphorus levels.')
-    } else if (pStatus === 'High') {
-      notes.push('🟠 High P: Reduce high‑P inputs (e.g. poultry manure) and add carbon‑rich browns.')
+      notes.push('🟡 Low P: Toss in bone meal or crushed eggshells to boost phosphorus levels.')
+    } else if (pStatus === 'Harvest Immediately') {
+      notes.push('🔵 High P: Be cautious with bone meal, manure, and other high-phosphorus materials, use sparingly and balance with carbon-rich materials (leaves, straw) to prevent excess phosphorus, Harvest compost now.')
+    } else if (pStatus === 'Optimal') {
+      notes.push('🟢 Optimal P: Phosphorus levels are ideal for composting.')
     }
 
     // Potassium
     if (kStatus === 'Low') {
-      notes.push('🟢 Low K: Add wood ash or banana peels for a potassium boost.')
-    } else if (kStatus === 'High') {
-      notes.push('🟠 High K: Cut back on wood ash; mix in more greens or browns without K.')
+      notes.push('🟡 Low K: Add wood ash or banana peels for a potassium boost.')
+    } else if (kStatus === 'Harvest Immediately') {
+      notes.push('🔵 High K: Avoid adding wood ash or high-potassium fertilizers in large quantities, mix with carbon-rich materials to avoid excessive potassium levels that could disrupt plant nutrient uptake, Harvest compost now.')
+    } else if (kStatus === 'Optimal') {
+      notes.push('🟢 Optimal K: Potassium levels are ideal for composting.')
+    }
+
+    // If all are optimal, recommend harvest
+    if ([nStatus, pStatus, kStatus].every(s => s === 'Optimal')) {
+      notes.push('✅ All nutrients are optimal, Harvest compost now for best results.')
     }
 
     recs[name] = notes.length
       ? notes.join(' ')
-      : '✅ All nutrients are in good range for healthy composting.'
+      : '✅ All nutrients are optimal, Harvest compost now for best results.'
   })
 
   return recs
 })
+
 /* ── Soil helpers ─────────────────── */
 const TEMP_RANGE  = { low: 25, high: 32 }
 
@@ -557,6 +760,7 @@ function soilChartDataSingleDevice(device: string, label: string): ChartData<'li
   const allTimestamps = deviceData.map(r => r.timestamp).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
   const labels = allTimestamps.map(ts => {
     const dt = new Date(ts)
+    dt.setHours(dt.getHours() + 8)
     return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
   })
   const temps = deviceData.map(d => d.soil_temp ?? 0)
@@ -571,7 +775,7 @@ function soilChartDataSingleDevice(device: string, label: string): ChartData<'li
         label: `${device} ${label}`,
         data: cleaned,
         borderColor: `hsl(30, 80%, 50%)`,
-        pointRadius: 6, // Increased marker size
+        pointRadius: 4, // Increased marker size
         spanGaps: true,
         fill: false,
       },
@@ -620,6 +824,7 @@ function soilChartDataSingleDeviceWithToggle(device: string, label: string): Cha
   const allTimestamps = deviceData.map(r => r.timestamp).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
   const labels = allTimestamps.map(ts => {
     const dt = new Date(ts)
+    dt.setHours(dt.getHours() + 8)
     return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
   })
   const temps = deviceData.map(d => d.soil_temp ?? 0)
@@ -634,7 +839,7 @@ function soilChartDataSingleDeviceWithToggle(device: string, label: string): Cha
       label: `${device} Raw`,
       data: cleaned,
       borderColor: `hsl(30, 80%, 50%)`,
-      pointRadius: 6,
+      pointRadius: 4,
       spanGaps: true,
       fill: false,
     })
@@ -738,26 +943,52 @@ const filteredCo2Raw = computed(() => {
   return co2Raw.value.filter(row => selected.value.includes(row.devicename))
 })
 
+function interpolateNulls(arr: (number | null)[]): (number | null)[] {
+  let prevIdx = -1;
+  let prevVal = null;
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] == null) {
+      // Find next non-null
+      let nextIdx = i + 1;
+      while (nextIdx < arr.length && arr[nextIdx] == null) nextIdx++;
+      if (prevVal != null && nextIdx < arr.length && arr[nextIdx] != null) {
+        let nextVal = arr[nextIdx];
+        let steps = nextIdx - prevIdx;
+        for (let j = 1; j < steps; j++) {
+          arr[prevIdx + j] = prevVal + (((nextVal as number) - prevVal) * j / steps);
+        }
+        i = nextIdx - 1;
+      }
+    } else {
+      prevIdx = i;
+      prevVal = arr[i];
+    }
+  }
+  return arr;
+}
+
 // CO2 chart: only actual lines for each device
 const co2Data = computed<ChartData<'line'>>(() => {
-  let devices = co2ChartDevices.value.length ? co2ChartDevices.value : (selected.value.length ? selected.value : Array.from(new Set(co2Raw.value.map(r => r.devicename))))
+  // Use selected devices only
+  const devices = co2ChartDevices.value.length ? co2ChartDevices.value : Array.from(new Set(co2Raw.value.map(r => r.devicename)));
   // Collect all timestamps for x-axis
   const allTimestamps = Array.from(new Set(co2Raw.value.map(r => r.timestamp))).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
   const labels = allTimestamps.map(ts => {
     const dt = new Date(ts)
+    dt.setHours(dt.getHours() + 8)
     return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`
   })
   // Build dataset for each device
-  const datasets = devices.map((device, idx) => {
+  const datasets = devices.map((device) => {
     const deviceData = co2Raw.value.filter(r => r.devicename === device)
-    // Map to all timestamps
     const dataMap = Object.fromEntries(deviceData.map(r => [r.timestamp, r.co2 ?? null]))
-    const values = allTimestamps.map(ts => dataMap[ts] ?? null)
+    const rawValues = allTimestamps.map(ts => dataMap[ts] ?? null)
+    const values = interpolateNulls([...rawValues])
     return {
       label: `${device} CO₂ (Actual) (${CO2_UNIT})`,
       data: values,
-      borderColor: co2DeviceColors[idx % co2DeviceColors.length],
-      pointRadius: 6,
+      borderColor: co2DeviceColorMap.value[device],
+      pointRadius: 4,
       fill: false
     }
   })
@@ -927,13 +1158,11 @@ async function downloadFullReport() {
   const allRows = Object.values(merged)
 
   // Export as CSV
-  downloadBlob(
-    'full_report.csv',
-    toCSV(
-      allRows,
-      ['timestamp', 'devicename', 'nitrogen', 'phosphorus', 'potassium', 'soil_temp', 'co2']
-    )
-  )
+  const csvContent = toCSV(
+    allRows,
+    ['timestamp', 'devicename', 'nitrogen', 'phosphorus', 'potassium', 'soil_temp', 'co2']
+  );
+  downloadBlob('full_report.csv', csvContent);
 }
 
 
@@ -989,57 +1218,156 @@ const allSelected = computed(() =>
   allDeviceNamesRaw.value.length > 0 && selected.value.length === allDeviceNamesRaw.value.length
 )
 
-// Modal filter state
-const showDeviceModal = ref(false)
-const deviceSearch = ref('')
-const modalSelected = ref<string[]>([])
-
-const filteredDeviceOptions = computed(() => {
-  const search = deviceSearch.value.trim().toLowerCase()
-  if (!search) return allDeviceNamesRaw.value
-  return allDeviceNamesRaw.value.filter(d => d.toLowerCase().includes(search))
-})
-
-function selectAllDevices() {
-  modalSelected.value = [...filteredDeviceOptions.value]
-}
-function clearAllDevices() {
-  modalSelected.value = []
-}
-function confirmDeviceSelection() {
-  selected.value = [...modalSelected.value]
-  showDeviceModal.value = false
+// Filter functions
+function toggleFilterDropdown() {
+  isFilterDropdownOpen.value = !isFilterDropdownOpen.value
 }
 
-// Keep modalSelected in sync with selected when opening modal
-watchEffect(() => {
-  if (showDeviceModal.value) {
-    modalSelected.value = [...selected.value]
+// Filtered locations based on search
+const filteredLocations = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return locationList.value
   }
+  
+  const query = searchQuery.value.toLowerCase()
+  return locationList.value.filter(location => {
+    // Check if location name matches
+    if (location.toLowerCase().includes(query)) {
+      return true
+    }
+    
+    // Check if any device in this location matches
+    const devicesInLocation = locationDeviceMap.value[location] || []
+    return devicesInLocation.some(device => 
+      device.toLowerCase().includes(query)
+    )
+  })
 })
 
-function toggleDevice(dev: string) {
-  if (selected.value.includes(dev)) {
-    selected.value = selected.value.filter(d => d !== dev)
+// Get devices for a specific location, filtered by search
+function getFilteredDevicesInLocation(location: string): string[] {
+  const devices = locationDeviceMap.value[location] || []
+  if (!searchQuery.value.trim()) {
+    return [...devices].sort()
+  }
+  const query = searchQuery.value.toLowerCase()
+  return devices
+    .filter(device => device.toLowerCase().includes(query))
+    .sort()
+}
+
+// Get all devices in a location (unfiltered)
+function getDevicesInLocation(location: string): string[] {
+  return [...(locationDeviceMap.value[location] || [])].sort()
+}
+
+// Get count of selected devices in a location
+function getSelectedDevicesInLocation(location: string): number {
+  const devicesInLocation = getDevicesInLocation(location)
+  return devicesInLocation.filter(device => selectedDevices.value.includes(device)).length
+}
+
+// Check if all devices in a location are selected
+function areAllDevicesSelectedInLocation(location: string): boolean {
+  const devicesInLocation = getDevicesInLocation(location)
+  return devicesInLocation.length > 0 && 
+         devicesInLocation.every(device => selectedDevices.value.includes(device))
+}
+
+// Toggle location expansion (show/hide devices)
+function toggleLocationExpansion(location: string) {
+  if (expandedLocations.value.includes(location)) {
+    expandedLocations.value = expandedLocations.value.filter(loc => loc !== location)
   } else {
-    selected.value = [...selected.value, dev]
+    expandedLocations.value = [...expandedLocations.value, location]
   }
 }
 
-function remove(dev: string) { selected.value = selected.value.filter(d => d !== dev) }
-function clearAll() { selected.value = [] }
+// Toggle all devices in a location
+function toggleAllDevicesInLocation(location: string) {
+  const devicesInLocation = getDevicesInLocation(location)
+  const allSelected = areAllDevicesSelectedInLocation(location)
+  
+  if (allSelected) {
+    // Remove all devices from this location
+    selectedDevices.value = selectedDevices.value.filter(device => 
+      !devicesInLocation.includes(device)
+    )
+  } else {
+    // Add all devices from this location
+    const newDevices = devicesInLocation.filter(device => 
+      !selectedDevices.value.includes(device)
+    )
+    selectedDevices.value = [...selectedDevices.value, ...newDevices]
+  }
+}
 
-// State for CO₂ chart device filter
-const co2ChartDevices = ref<string[]>([])
+// Toggle individual device
+function toggleDevice(device: string) {
+  if (selectedDevices.value.includes(device)) {
+    selectedDevices.value = selectedDevices.value.filter(d => d !== device)
+  } else {
+    selectedDevices.value = [...selectedDevices.value, device]
+  }
+}
 
-// Initialize with all selected devices
-watchEffect(() => {
-  if (!co2ChartDevices.value.length && selected.value.length) {
-    co2ChartDevices.value = [...selected.value]
+// Remove individual device
+function removeDevice(device: string) {
+  selectedDevices.value = selectedDevices.value.filter(d => d !== device)
+}
+
+// Update existing functions
+function selectAllDevices() {
+  const allDevices = Object.values(locationDeviceMap.value).flat()
+  selectedDevices.value = [...allDevices]
+}
+
+function clearAllDevices() {
+  selectedDevices.value = []
+  expandedLocations.value = []
+}
+
+// Get preview text for selected devices
+function getSelectedDevicesPreview(): string {
+  if (selectedDevices.value.length === 0) return ''
+  if (selectedDevices.value.length <= 2) {
+    return selectedDevices.value.join(', ')
+  }
+  return `${selectedDevices.value.slice(0, 2).join(', ')} and ${selectedDevices.value.length - 2} more`
+}
+
+// Update existing remove and clearAll functions to use new names
+function remove(dev: string) { 
+  removeDevice(dev)
+  co2ChartDevices.value = [...selectedDevices.value]
+}
+
+function clearAll() {
+  clearAllDevices()
+  co2ChartDevices.value = []
+}
+
+// Close dropdown on outside click
+onMounted(async () => {
+  // ...existing code...
+  
+  if (dropdownRef.value) {
+    onClickOutside(dropdownRef, () => (isFilterDropdownOpen.value = false))
   }
 })
 
-// Toggle device filter for CO₂ chart
+// Remove old device filter state
+// const showDeviceModal = ref(false)
+// const deviceSearch = ref('')
+// const modalSelected = ref<string[]>([])
+
+// Remove old filter functions
+// const filteredDeviceOptions = computed(() => {
+//   const search = deviceSearch.value.trim().toLowerCase()
+//   if (!search) return allDeviceNamesRaw.value
+//   return allDeviceNamesRaw.value.filter(d => d.toLowerCase().includes(search))
+// })
+
 function toggleCo2Device(dev: string) {
   if (co2ChartDevices.value.includes(dev)) {
     co2ChartDevices.value = co2ChartDevices.value.filter(d => d !== dev)
@@ -1052,25 +1380,26 @@ function toggleCo2Device(dev: string) {
   }
 }
 
-// Color palette for device pills and CO₂ chart lines
-const co2DeviceColors = [
-  '#f77c05', // orange
-  '#3b82f6', // blue
-  '#facc15', // yellow
-  '#22c55e', // green
-  '#a855f7', // purple
-  '#f87171', // red
-  '#14b8a6', // teal
-  '#eab308', // amber
-  // add more if needed
-]
+function getDeviceColor(idx: number) {
+  // Generates visually distinct HSL colors
+  return `hsl(${(idx * 47) % 360}, 80%, 55%)`
+}
 
 // Map device name to color based on its index in selected
-const co2DeviceColorMap = computed<Record<string, string>>(() => {
-  const map: Record<string, string> = {}
-  const devices = selected.value.length ? selected.value : Array.from(new Set(co2Raw.value.map(r => r.devicename)))
+
+const co2ChartDevices = ref<string[]>([])
+
+watch(selectedDevices, (newVal) => {
+  co2ChartDevices.value = [...newVal]
+})
+
+const co2DeviceColorMap = computed(() => {
+  const map = {} as Record<string, string>
+  const devices = co2ChartDevices.value.length
+    ? co2ChartDevices.value
+    : selected.value
   devices.forEach((dev, idx) => {
-    map[dev] = co2DeviceColors[idx % co2DeviceColors.length]
+    map[dev] = getDeviceColor(idx)
   })
   return map
 })
@@ -1137,12 +1466,82 @@ h1, h2, h3, h4, h5, h6 {
   cursor: pointer;
 }
 .co2-pill {
+  border-style: solid;
+  box-shadow: 0 0 0 1.5px #fff2;
   cursor: pointer;
-  transition: box-shadow 0.2s, opacity 0.2s;
 }
 .co2-pill:hover {
   box-shadow: 0 0 0 2px #fff3, 0 2px 8px #0002;
   opacity: 1;
 }
+.orange-glow {
+  box-shadow:
+    0 2px 16px 0 #ea580c33,
+    0 0 0 1.5px #fff2,
+    0 1px 8px #0002;
+  transition: box-shadow 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+.orange-glow:hover {
+  box-shadow:
+    0 4px 32px 0 #ea580c66,
+    0 0 0 2px #ea580c99,
+    0 2px 16px #0004;
+}
+button.text-sm {
+  cursor: pointer;
+}
+.flex.items-center.gap-2.p-3.bg-zinc-800\/50:hover {
+  cursor: pointer;
+}
+button.text-xs {
+  cursor: pointer;
+}
+button.flex.items-center.gap-2.flex-1.text-left {
+  cursor: pointer;
+}
+button.w-full.border.rounded.p-3.bg-zinc-900.text-left.text-orange-200.flex.items-center.justify-between {
+  cursor: pointer;
+}
+input[type="checkbox"] {
+  cursor: pointer;
+}
+.ml-1.text-orange-400:hover,
+.ml-1.text-orange-400 {
+  cursor: pointer;
+}
+/* Fade transition for dropdowns */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+/* Slide down animation for device lists */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: top;
+}
+
+.slide-down-enter-from {
+  opacity: 0;
+  transform: scaleY(0);
+  max-height: 0;
+}
+
+.slide-down-leave-to {
+  opacity: 0;
+  transform: scaleY(0);
+  max-height: 0;
+}
+
+.slide-down-enter-to,
+.slide-down-leave-from {
+  opacity: 1;
+  transform: scaleY(1);
+  max-height: 500px;
+}
 </style>
+
 

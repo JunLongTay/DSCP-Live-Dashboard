@@ -5,32 +5,21 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
-    "start": "nuxt start",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@headlessui/vue": "^1.7.23",
-    "@heroicons/vue": "^2.2.0",
     "@nuxt/icon": "^1.15.0",
     "@tailwindcss/vite": "^4.1.11",
     "chart.js": "^4.5.0",
-    "chartjs-adapter-date-fns": "^3.0.0",
-    "chartjs-plugin-zoom": "^2.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "compression": "^1.8.0",
-    "date-fns": "^3.6.0",
-    "exceljs": "^4.4.0",
-    "file-saver": "^2.0.5",
-    "hammerjs": "^2.0.8",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^2.5.2",
-    "jspdf-autotable": "^5.0.2",
+    "d3": "^7.9.0",
     "lucide-react": "^0.525.0",
     "lucide-vue-next": "^0.525.0",
-    "nuxt": "^3.17.7",
+    "nuxt": "^3.17.6",
+    "papaparse": "^5.5.3",
     "reka-ui": "^2.3.2",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.11",
@@ -38,14 +27,12 @@
     "vue": "^3.5.17",
     "vue-chartjs": "^5.3.2",
     "vue-router": "^4.5.1",
-    "xlsx": "^0.18.5",
-    "xlsx-js-style": "^1.2.0",
-    "xlsx-populate": "^1.21.0"
+    "vue3-apexcharts": "^1.8.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.57",
-    "@iconify-json/mdi": "^1.2.3",
     "@nuxtjs/tailwindcss": "^6.14.0",
+    "@types/papaparse": "^5.3.16",
     "shadcn-nuxt": "^2.2.0",
     "typescript": "^5.8.3"
   }

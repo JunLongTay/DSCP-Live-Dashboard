@@ -14,6 +14,36 @@
       </span>
     </div>
 
+    <!-- System Status Box -->
+    <div class="w-full px-2 mb-2">
+      <div
+        class="system-status-box bg-transparent rounded-lg shadow-md px-4 py-3 text-xs font-inter"
+        style="border: 2px solid #ff8800; opacity: 0.75; color: #ff8800;"
+      >
+        <div class="flex items-center gap-2 mb-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #ff8800;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20h.01M4 4h16v16H4V4z" />
+          </svg>
+          <span class="font-semibold">System Status</span>
+        </div>
+        <div class="flex items-center justify-between py-1">
+          <span>Devices</span>
+          <span class="font-bold">{{ deviceCount }}</span>
+        </div>
+        <div class="flex items-center justify-between py-1">
+          <span>Online</span>
+          <span class="font-bold flex items-center gap-1" style="color: #22c55e;">
+            <span class="inline-block w-2 h-2 rounded-full bg-green-400"></span>
+            Online
+          </span>
+        </div>
+        <div class="flex items-center justify-between py-1">
+          <span>Last Update</span>
+          <span class="font-bold">{{ lastUpdateRelative }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Navigation links -->
     <nav class="flex flex-col gap-3 mt-4">
       <NuxtLink
@@ -43,7 +73,6 @@
     <!-- Footer block with logo.webp at the bottom -->
     <footer class="mt-auto px-4 py-3 text-xs text-orange-700 border-t border-orange-900 flex flex-col gap-2 items-center">
       <span>v1.0.0</span>
-      <NuxtLink to="/about" class="hover:underline text-orange-500">Help / About</NuxtLink>
       <img src="/logo.webp" alt="Cute Plant Bot Logo" class="w-16 h-16 mt-2" />
     </footer>
   </aside>
@@ -64,6 +93,32 @@ const items: Item[] = [
   { label: 'Live Plant Dashboard', to: '/live-plant', icon: 'lucide:leaf' },
   { label: 'Data tables',            to: '/data-viewing',      icon: 'lucide:user-circle' },
 ]
+
+// System Status logic (dummy data, replace with real API if needed)
+import { ref, computed } from 'vue'
+
+// Example: device count from parent/dashboard (replace with prop or inject if needed)
+const deviceCount = ref(12) // Replace with actual device count
+
+// Example: database online status (always online for now)
+const dbOnline = ref(true)
+
+// Example: last update timestamp (replace with actual value)
+const lastUpdate = ref(new Date())
+
+function getRelativeTime(date: Date) {
+  if (!date) return '—'
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return '0m ago'
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr}h ago`
+  return date.toLocaleString()
+}
+
+const lastUpdateRelative = computed(() => getRelativeTime(lastUpdate.value))
 </script>
 
 <style scoped>
@@ -86,5 +141,12 @@ const items: Item[] = [
   background-image: repeating-linear-gradient(135deg, #ff8800 0 2px, transparent 2px 24px);
   pointer-events: none;
   z-index: 0;
+}
+.system-status-box {
+  /* Transparent background, orange outline set inline */
+  margin-bottom: 0.5rem;
+}
+.font-inter {
+  font-family: 'Inter', Arial, sans-serif;
 }
 </style>

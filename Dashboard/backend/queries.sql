@@ -3,7 +3,7 @@ SELECT
   to_timestamp(
     floor(extract(epoch FROM dd.devicetimestamp) / ($1 * 60))
     * ($1 * 60)
-  ) AT TIME ZONE 'UTC' AS timestamp,
+  ) AT TIME ZONE 'Asia/Singapore' AS timestamp,
   d.devicename,
   AVG(CASE WHEN sd.sensorid = 12 THEN sd.value::float END) AS nitrogen,
   AVG(CASE WHEN sd.sensorid = 13 THEN sd.value::float END) AS phosphorus,
@@ -14,7 +14,6 @@ JOIN sensordata sd
 JOIN devices d ON dd.deviceid = d.deviceid
 WHERE sd.sensorid IN (12, 13, 14)
   AND dd.devicetimestamp >= NOW() - ($2 || ' minutes')::interval
-  AND d.devicename ~ '^NP00[1-8]$'
 GROUP BY timestamp, d.devicename
 ORDER BY timestamp DESC;
 
@@ -23,7 +22,7 @@ SELECT
   to_timestamp(
     floor(extract(epoch FROM dd.devicetimestamp) / ($1 * 60))
     * ($1 * 60)
-  ) AT TIME ZONE 'UTC' AS timestamp,
+  ) AT TIME ZONE 'Asia/Singapore' AS timestamp,
   d.devicename,
   AVG(CASE WHEN sd.sensorid = 8 THEN sd.value::float END) AS soil_temp,
   AVG(CASE WHEN sd.sensorid = 1 THEN sd.value::float END) AS co2
@@ -33,7 +32,6 @@ JOIN sensordata sd
 JOIN devices d ON dd.deviceid = d.deviceid
 WHERE sd.sensorid IN (8, 1)
   AND dd.devicetimestamp >= NOW() - ($2 || ' minutes')::interval
-  AND d.devicename ~ '^NP00[1-8]$'
 GROUP BY timestamp, d.devicename
 ORDER BY timestamp DESC;
 
@@ -48,18 +46,19 @@ JOIN sensors s ON sd.sensorid = s.sensorid
 JOIN devices d ON dd.deviceid = d.deviceid
 WHERE s.sensor = 'Soil Moisture'
   AND dd.devicetimestamp >= NOW() - make_interval(mins := $2)
-  AND d.devicename ILIKE 'NP Group%Plant Pot%'
+--  AND d.devicename ILIKE 'NP Group%Plant Pot%'   <-- REMOVE THIS LINE
 GROUP BY timestamp, d.devicename
 ORDER BY timestamp DESC;
 
 -- name: device-names
 SELECT devicename
 FROM devices
-WHERE devicename ILIKE 'NP Group%Plant Pot%'
+-- WHERE devicename ILIKE 'NP Group%Plant Pot%'   <-- REMOVE THIS LINE
 ORDER BY devicename ASC;
 
 -- name: np-devices
 SELECT devicename
 FROM devices
-WHERE devicename ~ '^NP00[1-8]$'
+-- WHERE devicename ~ '^NP00[1-8]$'   <-- REMOVE THIS LINE
 ORDER BY devicename ASC;
+

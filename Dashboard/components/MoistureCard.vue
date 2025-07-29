@@ -1,6 +1,6 @@
 <template>
   <div
-    class="w-full max-w-sm bg-white dark:bg-zinc-800 border-t-4 border-blue-500
+    class="w-full max-w-sm dark:bg-[#121212] border-t-4 border-blue-500
            p-4 sm:p-6 rounded-lg shadow flex flex-col gap-2
            transition-transform duration-200 ease-out hover:scale-[1.02] hover:shadow-lg"
   >
@@ -31,7 +31,7 @@
       }"
     >
       <span>{{ formatChange(props.change) }}%</span>
-      <span class="text-gray-500 dark:text-gray-400">
+      <span style="color: #f0d5af;">
         — {{ props.device }}
         <template v-if="props.changeLabel">
           ({{ props.changeLabel }})
