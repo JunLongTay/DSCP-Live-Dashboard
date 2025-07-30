@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import joblib
 import warnings
+from statsmodels.tsa.arima.model import ARIMA  # ARIMA import
 warnings.filterwarnings('ignore')
 
 class MoisturePredictionPipeline:
@@ -95,7 +96,9 @@ class MoisturePredictionPipeline:
             ))
         ])
         
-
+        # ARIMA (Time Series Model)
+        self.models['ARIMA'] = None  # We'll handle ARIMA outside of a pipeline
+        
     def train_and_evaluate(self, X, y):
         """Train all models and find the best one"""
         
@@ -113,33 +116,31 @@ class MoisturePredictionPipeline:
             print(f"Training {name}...")
             
             try:
-                # Train model
-                model.fit(X_train, y_train)
-                
-                # Make predictions
-                y_pred = model.predict(X_test)
-                
-                # Calculate metrics
-                rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-                mae = mean_absolute_error(y_test, y_pred)
-                r2 = r2_score(y_test, y_pred)
-                
-                # Cross-validation score
-                cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='r2')
-                cv_mean = cv_scores.mean()
-                cv_std = cv_scores.std()
-                
-                results[name] = {
-                    'RMSE': rmse,
-                    'MAE': mae,
-                    'R²': r2,
-                    'CV_R²_mean': cv_mean,
-                    'CV_R²_std': cv_std,
-                    'model': model
-                }
-                
-                print(f"{name} → RMSE: {rmse:.4f}, MAE: {mae:.4f}, R²: {r2:.4f}, CV_R²: {cv_mean:.4f}±{cv_std:.4f}")
-                
+                if name == 'ARIMA':  # Handle ARIMA separately since it’s not in a pipeline
+                    model = ARIMA(y_train, order=(5,1,0))  # Example order, adjust as needed
+                    model.fit(y_train)
+                    y_pred = model.forecast(steps=len(y_test))
+                    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                    mae = mean_absolute_error(y_test, y_pred)
+                    r2 = r2_score(y_test, y_pred)
+                    results[name] = {'RMSE': rmse, 'MAE': mae, 'R²': r2}
+                    print(f"ARIMA → RMSE: {rmse:.4f}, MAE: {mae:.4f}, R²: {r2:.4f}")
+                    continue
+                else:
+                    # Train other models
+                    model.fit(X_train, y_train)
+                    y_pred = model.predict(X_test)
+                    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                    mae = mean_absolute_error(y_test, y_pred)
+                    r2 = r2_score(y_test, y_pred)
+                    results[name] = {
+                        'RMSE': rmse,
+                        'MAE': mae,
+                        'R²': r2,
+                        'model': model
+                    }
+                    print(f"{name} → RMSE: {rmse:.4f}, MAE: {mae:.4f}, R²: {r2:.4f}")
+                    
             except Exception as e:
                 print(f"Error training {name}: {e}")
                 continue
@@ -158,56 +159,24 @@ class MoisturePredictionPipeline:
     def evaluate_model(self, X_val, y_val):
         """Evaluate the best model based on validation data."""
         if self.models:  # Check if there are any models
-            # Use the best model (for example, Random Forest)
-            model = self.models.get(self.best_model_name)  # This assumes 'best_model_name' is set to Random_Forest
-            if model:
-                y_pred = model.predict(X_val)
+            # Use the best model (for example, ARIMA)
+            if self.best_model_name == 'ARIMA':
+                model = ARIMA(y_val, order=(5,1,0))  # Example order, adjust as needed
+                model.fit(y_val)
+                y_pred = model.forecast(steps=len(y_val))
                 rmse = np.sqrt(mean_squared_error(y_val, y_pred))
                 mae = mean_absolute_error(y_val, y_pred)
                 r2 = r2_score(y_val, y_pred)
                 print(f"Evaluation for {self.best_model_name}: RMSE: {rmse}, MAE: {mae}, R²: {r2}")
             else:
-                print("No model found in 'self.models'")
+                model = self.models.get(self.best_model_name)
+                y_pred = model.predict(X_val)
+                rmse = np.sqrt(mean_squared_error(y_val, y_pred))
+                mae = mean_absolute_error(y_val, y_pred)
+                r2 = r2_score(y_val, y_pred)
+                print(f"Evaluation for {self.best_model_name}: RMSE: {rmse}, MAE: {mae}, R²: {r2}")
         else:
             print("No models available to evaluate")
-
-    def predict_future(self, recent_data, days_ahead=30):
-        """
-        Predict future moisture values
-        Args:
-            recent_data: DataFrame with recent sensor readings
-            days_ahead: Number of days to predict
-        """
-        if self.best_model is None:
-            raise ValueError("No trained model available. Train models first.")
-        
-        predictions = []
-        
-        # Use the most recent data point as starting point
-        if len(recent_data) > 0:
-            last_row = recent_data.iloc[-1:][self.feature_columns]
-            
-            # Simple approach: predict each day using the model
-            for day in range(days_ahead):
-                try:
-                    pred = self.best_model.predict(last_row)[0]
-                    predictions.append(max(0, min(100, pred)))  # Clamp between 0-100%
-                    
-                    # For next prediction, you might want to update some features
-                    # This is a simplified approach - you might want to be more sophisticated
-                    
-                except Exception as e:
-                    print(f"Error predicting day {day + 1}: {e}")
-                    # Fallback to previous prediction or average
-                    if predictions:
-                        predictions.append(predictions[-1])
-                    else:
-                        predictions.append(50.0)  # Default fallback
-        else:
-            # No recent data, return default values
-            predictions = [50.0] * days_ahead
-        
-        return predictions
     
     def save_model(self, filepath):
         """Save the best trained model"""
@@ -246,8 +215,4 @@ if __name__ == "__main__":
     # Note: You'll need to adapt this to your actual data loading
     # For now, this is a placeholder
     print("Pipeline created successfully!")
-    print("Next steps:")
-    print("1. Load your preprocessed data")
-    print("2. Call pipeline.prepare_data(df=your_dataframe)")
-    print("3. Call pipeline.train_and_evaluate(X, y)")
-    print("4. Save the model with pipeline.save_model('model.pkl')")
+    print("Next steps: Prepare data, train, and evaluate your models")

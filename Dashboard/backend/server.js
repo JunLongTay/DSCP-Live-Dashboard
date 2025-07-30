@@ -127,11 +127,14 @@ app.get('/moisture-all', async (req, res) => {
 
 // 📊 Enriched Moisture Data with Environmental Sensors
 app.get('/moisture-detailed', async (req, res) => {
-  const bucketMin = Math.max(parseInt(req.query.bucket_min) || 2, 1);
-  const windowMin = Math.max(parseInt(req.query.window_min) || 120, bucketMin);
+  const windowMin = 43200; // 2 hours in minutes
+  const bucketMin = 60;  // 2 minutes
+
   const key = `moisture-detailed-${bucketMin}-${windowMin}`;
+  
   const cached = getCached(key);
   if (cached) return res.json(cached);
+
   try {
     const { rows } = await pool.query(queries['moisture-all-detailed'], [bucketMin, windowMin]);
     setCache(key, rows);
@@ -141,6 +144,8 @@ app.get('/moisture-detailed', async (req, res) => {
     res.status(500).send(err.message);
   }
 });
+
+
 
 app.get('/device-names', async (req, res) => {
   try {
@@ -195,7 +200,6 @@ async function warmUpCache() {
     }
   }
 }
-
 
 app.listen(3001, () => {
   console.log('✅ Fully Optimized backend running at http://localhost:3001');

@@ -18,17 +18,7 @@
             <h1 class="text-3xl font-bold text-orange-400 font-roboto-slab">Soil Moisture Forecast</h1>
             <p class="text-sm text-orange-300 whitespace-nowrap">Last refreshed: {{ lastRefresh }}</p>
           </div>
-          <!-- RIGHT: Time Range + Export -->
-          <div class="flex flex-row gap-4 items-center">
-            <div class="flex items-center gap-2">
-              <label class="font-medium text-orange-300">Time Range:</label>
-              <select v-model="selectedRange" class="border border-orange-500 rounded p-2 text-sm bg-zinc-900 text-orange-200">
-                <option value="short">Short (1 Day)</option>
-                <option value="medium">Medium (3 Days)</option>
-                <option value="long">Long (7 Days)</option>
-              </select>
-            </div>
-          </div>
+          <!-- RIGHT: Export -->
           <!-- Export Dropdown -->
           <div class="relative inline-block text-left">
             <Menu as="div" class="relative">
@@ -72,7 +62,7 @@
         </div>
       </div>
       <!-- 🔹 Combined Location and Device Filter -->
-      <section class="pl-0 mb-10">
+      <section class="pl-0 mb-12">
         <div class="flex items-center justify-between mb-2">
           <label class="font-medium text-orange-300">Filter by Location & Device</label>
           <div class="flex gap-2">
@@ -265,9 +255,9 @@
       </section>
 
       <!-- 📊 Moisture Summary Cards -->
-      <section class="mb-12">
-        <h2 class="text-xl font-semibold mb-4 text-orange-400">Moisture Summary</h2>
-        <div v-if="selectedDevices.length" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+      <section class="mb-16">
+        <h2 class="text-2xl font-semibold mb-6 text-orange-400">Moisture Summary</h2>
+        <div v-if="selectedDevices.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           <MoistureCard
             v-for="device in selectedDevices"
             :key="device + '-latest'"
@@ -278,7 +268,7 @@
             :changeLabel="'vs forecast'"
             :status="statusTag(latestMoisture[device])"
             :isForecast="false"
-            class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl"
+            class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-6 min-h-[200px]"
           >
             <template #title>
               <span style="color: #f0d5af;">{{ device }} Latest</span>
@@ -293,27 +283,28 @@
             </template>
           </MoistureCard>
         </div>
-        <div v-else class="w-full flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
+        <div v-else class="w-full flex items-center justify-center h-40 text-orange-300 text-xl font-bold">
           Please select a device to get started.
         </div>
       </section>
 
       <!-- 📈 Historical Charts -->
-      <section class="mb-12">
-        <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Recent Soil Moisture Readings</h2>
+      <section class="mb-16">
+        <h2 class="text-2xl font-semibold mt-8 mb-6 text-orange-400">Recent Soil Moisture Readings</h2>
         <template v-if="selectedDevices.length">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 justify-start items-start w-full">
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-10 justify-start items-start w-full">
             <div
               v-for="(device, idx) in selectedDevices"
               :key="device + '-chart'"
-              class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-6"
+              class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow flex flex-col gap-4 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-8 min-h-[500px]"
               style="will-change: transform;"
             >
-              <!-- Download button above chart, right aligned -->
-              <div class="flex justify-end mb-2">
+              <!-- Chart Title and Download button -->
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-orange-300">{{ device }} - Historical Data</h3>
                 <button
                   @click="downloadChartImage(`historical-${device}`, `${device}-historical.png`)"
-                  class="flex items-center gap-2 px-3 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer"
+                  class="flex items-center gap-2 px-4 py-2 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer transition-all duration-200"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
@@ -321,47 +312,47 @@
                   Download
                 </button>
               </div>
-              <div class="relative max-h-[420px] overflow-hidden">
-                <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-72" />
+              <div class="relative flex-1 min-h-[400px] overflow-hidden">
+                <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-full w-full" />
               </div>
             </div>
           </div>
         </template>
         <template v-else>
-          <div class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
+          <div class="flex items-center justify-center h-40 text-orange-300 text-xl font-bold">
             Please select a device to get started.
           </div>
         </template>
       </section>
 
       <!-- 📉 Forecast Chart -->
-      <section class="w-full mb-8 flex flex-col items-start">
-        <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">Moisture Forecast (Next 30 Days)</h2>
+      <section class="w-full mb-12 flex flex-col items-start">
+        <h2 class="text-2xl font-semibold mt-8 mb-6 text-orange-400">Moisture Forecast (Next 30 Days)</h2>
         <template v-if="selectedDevices.length && forecastChart">
           <div
-            class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow w-full flex flex-col gap-2 max-w-full transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl pt-6 pr-6"
+            class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow w-full flex flex-col gap-4 max-w-full transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-8 min-h-[600px]"
             style="will-change: transform;"
           >
-            <div class="flex justify-end items-center w-full">
-              <button @click="downloadChartImage('forecast-chart', 'forecast-30day.png')" class="flex items-center gap-2 px-3 py-1 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-semibold text-orange-300">30-Day Moisture Forecast</h3>
+              <button @click="downloadChartImage('forecast-chart', 'forecast-30day.png')" class="flex items-center gap-2 px-4 py-2 rounded bg-transparent border border-orange-500 text-orange-500 font-semibold hover:bg-orange-500 hover:text-white group cursor-pointer transition-all duration-200">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-white transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16v-8m0 8l-4-4m4 4l4-4M4 20h16" />
                 </svg>
                 Download
               </button>
             </div>
-            <div class="max-h-[340px] overflow-hidden w-full">
-              <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-64 w-full" />
+            <div class="flex-1 min-h-[500px] overflow-hidden w-full">
+              <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-full w-full" />
             </div>
           </div>
         </template>
         <template v-else>
-          <div class="w-full flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
+          <div class="w-full flex items-center justify-center h-40 text-orange-300 text-xl font-bold">
             Please select a device to get started.
           </div>
         </template>
       </section>
-
     </div>
   </div>
 </template>
@@ -447,13 +438,33 @@ const deviceRecommendations = computed<Record<string,string>>(() => {
   }, {} as Record<string,string>)
 })
 
-/* ── Config & Time Range ───────────────────────────── */
-const selectedRange = ref<'short' | 'medium' | 'long'>('short')
-const timeConfigs = {
-  short:  { bucket_min: 60, window_min: 1440 },
-  medium: { bucket_min: 180, window_min: 4320 },
-  long:   { bucket_min: 1440, window_min: 10080 }
-}
+// 2️⃣ Computed property to get the latest moisture values for selected devices
+const clickedDataPoints = ref<string[]>([]) // Array to track clicked data points
+
+const handleChartClick = (event: any, chartElement: any) => {
+  if (chartElement.length > 0) {
+    const clickedPoint = chartElement[0];
+    const datasetIndex = clickedPoint.datasetIndex;
+    const index = clickedPoint.index;
+
+    // Create a unique identifier for the clicked point
+    const pointId = `${datasetIndex}-${index}`;
+
+    // Toggle visibility of the clicked data point
+    if (clickedDataPoints.value.includes(pointId)) {
+      // Remove it from the clicked points
+      clickedDataPoints.value = clickedDataPoints.value.filter(id => id !== pointId);
+    } else {
+      // Add it to the clicked points
+      clickedDataPoints.value.push(pointId);
+    }
+
+    // Update the chart to reflect the changes
+    nextTick(() => {
+      chartElement.chart.update(); // Update the chart after modifying the data
+    });
+  }
+};
 
 /* ── State ───────────────────────────── */
 const rawData = ref<MoistureData[]>([])
@@ -463,14 +474,11 @@ const isLoading = ref(true)
 
 /* ── Fetch Data ───────────────────────────── */
 watchEffect(async () => {
-  const config = timeConfigs[selectedRange.value]
   const { data } = await useFetch<MoistureData[]>(
-    'http://localhost:3001/moisture-detailed',
-    { query: config }
-  )
-  rawData.value = data.value ?? []
+    'http://localhost:3001/moisture-detailed'
+  );
+  rawData.value = data.value ?? [];
 })
-
 /* ── Download Data ───────────────────────────── */
 /* ── Download Selected Data ───────────────── */
 function downloadSelectedData(format: 'csv' | 'xlsx') {
@@ -582,7 +590,7 @@ async function fetchMLPredictions() {
     const devicesData: Record<string, any> = {}
 
     for (const device of selectedDevices.value) {
-      const recentData = deviceData.value[device]?.slice(0, 50) || []
+      const recentData = deviceData.value[device]?.slice(0, 500) || []
       // Use transformDataForML to match ML API expected format
       const formattedData = transformDataForML(recentData)
       devicesData[device] = {
@@ -608,8 +616,6 @@ async function fetchMLPredictions() {
     const result = await response.json()
     mlPredictions.value = result.predictions
 
-    // Optionally handle metadata or log
-    // console.log('ML Predictions received:', result)
 
   } catch (error) {
     console.error('Error fetching ML predictions:', error)
@@ -770,26 +776,47 @@ const chartPalette = [
 ]
 
 function historicalChart(data: MoistureData[], label: string, idx = 0): ChartData<'line'> {
-  const sliced = data.slice(0, 100)
-  const format: Intl.DateTimeFormatOptions = selectedRange.value === 'long'
-    ? { weekday: 'short', month: 'short', day: 'numeric' }
-    : { hour: '2-digit', minute: '2-digit' }
+  // Define the type for the accumulator
+  const groupedByDay: Record<string, { count: number, totalMoisture: number }> = {};
+
+  // Group data by day and calculate the average moisture for each day
+  data.forEach(curr => {
+    const date = new Date(curr.timestamp);
+    const day = date.toISOString().split('T')[0]; // Extract the date in "YYYY-MM-DD" format
+    
+    // Initialize the day in the accumulator if not already present
+    if (!groupedByDay[day]) {
+      groupedByDay[day] = { count: 0, totalMoisture: 0 };
+    }
+
+    // Aggregate moisture for the day
+    groupedByDay[day].count++;
+    groupedByDay[day].totalMoisture += curr.moisture;
+  });
+
+  // Create labels (dates) and moisture values
+  const labels = Object.keys(groupedByDay);
+  const moistureData = labels.map(day => {
+    const { totalMoisture, count } = groupedByDay[day];
+    return totalMoisture / count; // Calculate the average moisture for the day
+  });
 
   return {
-    labels: sliced.map(d => new Date(d.timestamp).toLocaleString(undefined, format)).reverse(),
+    labels: labels, // Labels are the days
     datasets: [{
-      label,
-      data: sliced.map(d => d.moisture).reverse(),
+      label: label,
+      data: moistureData, // Daily moisture values
       borderColor: chartPalette[idx % chartPalette.length],
-      backgroundColor: chartPalette[idx % chartPalette.length] + '33',
+      backgroundColor: chartPalette[idx % chartPalette.length] + '33', // Transparent background
       pointRadius: 4,
       pointBackgroundColor: chartPalette[idx % chartPalette.length],
       pointBorderColor: chartPalette[idx % chartPalette.length],
       tension: 0.3,
-      fill: false
+      fill: false  // No fill under the curve
     }]
-  }
+  };
 }
+
 
 function getChartOptions(): ChartOptions<'line'> {
   return {
@@ -825,7 +852,7 @@ function getChartOptions(): ChartOptions<'line'> {
 }
 
 const forecastChart = computed(() => {
-  const labels = [...Array(30)].map((_, i) => `Day ${i + 1}`)
+  const labels = [...Array(30)].map((_, i) => `Day ${i + 1}`);
 
   const datasets = selectedDevices.value.map((device, idx) => ({
     label: `${device} Forecast`,
@@ -833,58 +860,73 @@ const forecastChart = computed(() => {
     borderColor: chartPalette[idx % chartPalette.length],
     backgroundColor: chartPalette[idx % chartPalette.length] + '33',
     fill: true,
-    pointRadius: 4,
-    pointBackgroundColor: chartPalette[idx % chartPalette.length],
+    pointRadius: (context: any) => {
+      const pointId = `${context.datasetIndex}-${context.dataIndex}`;
+      // Highlight clicked points
+      if (clickedDataPoints.value.includes(pointId)) {
+        return 6; // Larger size for clicked points
+      }
+      return 0; // Default radius for non-clicked points
+    },
+    pointBackgroundColor: (context: any) => {
+      const pointId = `${context.datasetIndex}-${context.dataIndex}`;
+      // Change color for clicked points
+      if (clickedDataPoints.value.includes(pointId)) {
+        return 'orange';
+      }
+      return 'rgba(255, 255, 255, 0.7)'; // Default color for non-clicked points
+    },
     pointBorderColor: chartPalette[idx % chartPalette.length],
-  }))
+  }));
 
-  const allVals = datasets.flatMap(ds => ds.data)
-  const pad = 0.3
-  const yMin = Math.floor(Math.min(...allVals) - pad)
-  const yMax = Math.ceil(Math.max(...allVals) + pad)
+  const allVals = datasets.flatMap(ds => ds.data);
+  const pad = 0.3;
+  const yMin = Math.floor(Math.min(...allVals) - pad);
+  const yMax = Math.ceil(Math.max(...allVals) + pad);
 
-  return { labels, datasets, yMin, yMax }
-})
+  return { labels, datasets, yMin, yMax };
+});
 
 const forecastOptions = computed<ChartOptions<'line'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
+  onClick: handleChartClick, // Attach the click handler
   scales: {
     y: {
       min: forecastChart.value.yMin,
       max: forecastChart.value.yMax,
       grid: {
-          color: '#666666' // ← Y-axis grid line color
-        },
+        color: '#666666',
+      },
       ticks: {
-        callback: v => `${v}%`,
+        callback: (v: any) => `${v}%`,
         color: '#ff8800',
-        font: { size: 16, weight: 'bold' }
+        font: { size: 16, weight: 'bold' },
       },
       title: {
         display: true,
         text: 'Moisture (%)',
         color: '#ff8800',
-        font: { size: 16, weight: 'bold' }
-      }
+        font: { size: 16, weight: 'bold' },
+      },
     },
     x: {
       grid: {
-          color: '#666666' // ← Y-axis grid line color
-        },
+        color: '#666666',
+      },
       ticks: {
         color: '#ff8800',
-        font: { size: 14, weight: 'bold' }
+        font: { size: 14, weight: 'bold' },
       },
       title: {
         display: true,
         text: 'Day',
         color: '#ff8800',
-        font: { size: 14, weight: 'bold' }
-      }
-    }
-  }
-}))
+        font: { size: 14, weight: 'bold' },
+      },
+    },
+  },
+}));
 
 const moistureYAxisRange = computed(() => {
   const allValues: number[] = []
@@ -1157,24 +1199,47 @@ h1, h2, h3, h4, h5, h6 {
   to { opacity: 1; transform: none; }
 }
 .animate-fade-in {
-  animation: fade-in 0.8s cubic-bezier(0.4,0,0.2,1);
+animation: fade-in 30s cubic-bezier(0.4,0,0.2,1);
 }
+/* Basic box-shadow and transition */
 .orange-glow {
   box-shadow:
     0 2px 16px 0 #ea580c33,
     0 0 0 1.5px #fff2,
     0 1px 8px #0002;
-  transition: box-shadow 0.3s cubic-bezier(0.4,0,0.2,1);
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              transform 0.3s ease-in-out; /* Only transform will transition */
 }
+
+/* Hover state for enlargement and glow */
 .orange-glow:hover {
   box-shadow:
     0 4px 32px 0 #ea580c66,
     0 0 0 2px #ea580c99,
     0 2px 16px #0004;
+  transform: scale(1.1);  /* Immediately enlarge the element */
+  transition-delay: 0s;   /* No delay for enlargement */
 }
+
+/* Non-hover state (when mouse leaves) */
+.orange-glow:not(:hover) {
+  transition-delay: 0s;   /* Keep the glow effect for 2s after hover */
+  transform: scale(1);    /* Immediately shrink back */
+}
+
+/* For hover glow effect on a specific class */
 .hover\:glow-orange:hover {
   box-shadow: 0 0 24px 0 rgba(255, 136, 0, 0.18), 0 0 2px 0 rgba(255, 136, 0, 0.12);
+  transform: scale(1.1); /* Add the enlargement effect */
+  transition-delay: 0s;  /* No delay for enlargement */
 }
+
+/* Non-hover state for hover glow */
+.hover\:glow-orange:not(:hover) {
+  transition-delay: 0s;  /* Keep the glow effect for 2s after hover */
+  transform: scale(1);   /* Immediately shrink back */
+}
+
 
 /* Slide down animation for device lists */
 .slide-down-enter-active,

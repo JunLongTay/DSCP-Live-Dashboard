@@ -4,7 +4,7 @@
     class="relative hidden lg:flex w-64 h-screen flex-col
           pt-6 pl-4 text-xs font-normal
           border-r border-orange-700
-          sidebar-bg animate-fade-in"
+          sidebar-bg"
   >
     <!-- Logo.png at the very top -->
     <div class="flex flex-col items-center mb-2">
@@ -126,9 +126,7 @@ const lastUpdateRelative = computed(() => getRelativeTime(lastUpdate.value))
   from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: none; }
 }
-.animate-fade-in {
-  animation: fade-in 0.8s cubic-bezier(0.4,0,0.2,1);
-}
+
 /* Subtle sidebar background gradient and pattern */
 .sidebar-bg {
   background: linear-gradient(135deg, #181818 80%, #ff88001a 100%);

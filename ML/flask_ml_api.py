@@ -6,9 +6,7 @@ import joblib
 import logging
 from datetime import datetime, timedelta
 import traceback
-
-# Import your ML pipeline
-from ml_pipeline_fixed import MoisturePredictionPipeline
+from statsmodels.tsa.arima.model import ARIMA
 
 app = Flask(__name__)
 CORS(app)
@@ -18,22 +16,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Global variables
-ml_pipeline = None
+arima_model_fit = None
 model_loaded = False
 
 def load_ml_model():
-    """Load the trained ML model on startup"""
-    global ml_pipeline, model_loaded
+    """Load the ARIMA model on startup"""
+    global arima_model_fit, model_loaded
 
     try:
-        ml_pipeline = MoisturePredictionPipeline()
-        ml_pipeline.load_model('models/moisture_predictor.pkl')
+        # Load ARIMA model directly from joblib
+        arima_model_fit = joblib.load('models/arima_model.pkl')
         model_loaded = True
-        logger.info("ML model loaded successfully")
-        logger.info(f"Loaded model: {ml_pipeline.best_model_name}")
-        logger.info(f"Feature columns: {ml_pipeline.feature_columns}")
+        logger.info("ARIMA model loaded successfully")
     except Exception as e:
-        logger.error(f"Failed to load ML model: {e}")
+        logger.error(f"Failed to load ARIMA model: {e}")
         model_loaded = False
 
 def prepare_features(device_data):
@@ -58,23 +54,46 @@ def prepare_features(device_data):
         df['month'] = df['devicetimestamp'].dt.month
         df['day_of_year'] = df['devicetimestamp'].dt.dayofyear
 
-    # Select only the features that the model expects
-    if ml_pipeline and ml_pipeline.feature_columns:
-        available_features = [col for col in ml_pipeline.feature_columns if col in df.columns]
-        logger.info(f"Available features in data: {available_features}")
-        df_features = df[available_features]
-
-        # Fill missing features with default values
-        for col in ml_pipeline.feature_columns:
-            if col not in df_features.columns:
-                logger.warning(f"Missing feature '{col}' in input data, filling with 0")
-                df_features[col] = 0  # or appropriate default value
-
-        logger.info(f"Prepared features for prediction: {df_features.columns.tolist()}")
-        return df_features[ml_pipeline.feature_columns]
-
-    logger.warning("ml_pipeline or feature_columns not set")
     return df
+
+def train_arima_for_device(device_name, device_data):
+    """Train ARIMA model for a specific device"""
+    # Prepare the device's data for ARIMA
+    df = pd.DataFrame(device_data)
+    df['devicetimestamp'] = pd.to_datetime(df['devicetimestamp'])
+
+    # Ensure 'Soil Moisture' is the only column used for ARIMA
+    if 'Soil Moisture' not in df.columns:
+        raise ValueError(f"Missing 'Soil Moisture' in the data for device {device_name}")
+
+    # Use the 'Soil Moisture' column for ARIMA prediction
+    device_data = df[['devicetimestamp', 'Soil Moisture']].sort_values(by='devicetimestamp')
+
+    # Set 'devicetimestamp' as the index for ARIMA
+    device_data.set_index('devicetimestamp', inplace=True)
+
+    # Check if there is enough data for ARIMA
+    if len(device_data) < 2:  # ARIMA requires at least two data points
+        raise ValueError(f"Not enough data for device {device_name} to train ARIMA")
+
+    try:
+        # Fit ARIMA model (using order (p, d, q) you might want to tune)
+        arima_model = ARIMA(device_data['Soil Moisture'], order=(5, 1, 0))  # Example order (p=5, d=1, q=0)
+        arima_model_fit = arima_model.fit()
+
+        # Forecast future values (e.g., 30 days ahead)
+        forecast_values = arima_model_fit.forecast(steps=30)
+        forecast_dates = device_data.index[-1] + pd.to_timedelta(range(1, 31), unit='D')
+
+        forecast_data = {
+            'forecast': forecast_values,
+            'dates': forecast_dates
+        }
+
+        return forecast_data
+    except Exception as e:
+        logger.error(f"Error training ARIMA for {device_name}: {e}")
+        return None
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -85,70 +104,13 @@ def health_check():
         'timestamp': datetime.now().isoformat()
     })
 
-@app.route('/predict/moisture/<device_name>', methods=['POST'])
-def predict_moisture(device_name):
-    """
-    Predict moisture levels for a specific device
-    Expects JSON body with recent device data
-    """
-    if not model_loaded:
-        return jsonify({'error': 'ML model not loaded'}), 500
-    
-    try:
-        # Get request data
-        data = request.get_json()
-        
-        if not data or 'recent_data' not in data:
-            return jsonify({'error': 'recent_data is required'}), 400
-        
-        recent_data = data['recent_data']
-        days_ahead = data.get('days_ahead', 30)
-        
-        # Prepare features
-        features_df = prepare_features(recent_data)
-        
-        if features_df is None or len(features_df) == 0:
-            return jsonify({'error': 'Unable to prepare features from data'}), 400
-        
-        # Make predictions
-        predictions = ml_pipeline.predict_future(features_df, days_ahead)
-        
-        # Format response
-        forecast_data = []
-        base_date = datetime.now()
-        
-        for i, pred in enumerate(predictions):
-            forecast_date = base_date + timedelta(days=i+1)
-            forecast_data.append({
-                'day': i + 1,
-                'date': forecast_date.isoformat(),
-                'predicted_moisture': round(float(pred), 2),
-                'confidence': 'medium'  # You could implement confidence intervals
-            })
-        
-        return jsonify({
-            'device_name': device_name,
-            'model_used': ml_pipeline.best_model_name,
-            'forecast': forecast_data,
-            'metadata': {
-                'prediction_timestamp': datetime.now().isoformat(),
-                'days_predicted': days_ahead,
-                'input_data_points': len(recent_data)
-            }
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in prediction: {str(e)}")
-        logger.error(traceback.format_exc())
-        return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
-
 @app.route('/predict/moisture/batch', methods=['POST'])
 def predict_moisture_batch():
     """
     Predict moisture levels for multiple devices
     """
     if not model_loaded:
-        return jsonify({'error': 'ML model not loaded'}), 500
+        return jsonify({'error': 'ARIMA model not loaded'}), 500
 
     try:
         data = request.get_json()
@@ -186,26 +148,29 @@ def predict_moisture_batch():
                     }
                     continue
 
-                # Make predictions
-                predictions = ml_pipeline.predict_future(features_df, days_ahead)
-                logger.info(f"Device '{device_name}' - predictions: {predictions[:3]}...")
+                # Make predictions using ARIMA (this should always use ARIMA)
+                forecast_data = train_arima_for_device(device_name, recent_data)
+                
+                if forecast_data is None:
+                    results[device_name] = {
+                        'error': 'ARIMA model prediction failed',
+                        'forecast': []
+                    }
+                else:
+                    # Format forecast data
+                    forecast_data_formatted = []
+                    for i, forecast in enumerate(forecast_data['forecast']):
+                        forecast_date = forecast_data['dates'][i]
+                        forecast_data_formatted.append({
+                            'day': i + 1,
+                            'date': forecast_date.isoformat(),
+                            'predicted_moisture': round(float(forecast), 2)
+                        })
 
-                # Format forecast data
-                forecast_data = []
-                base_date = datetime.now()
-
-                for i, pred in enumerate(predictions):
-                    forecast_date = base_date + timedelta(days=i+1)
-                    forecast_data.append({
-                        'day': i + 1,
-                        'date': forecast_date.isoformat(),
-                        'predicted_moisture': round(float(pred), 2)
-                    })
-
-                results[device_name] = {
-                    'forecast': forecast_data,
-                    'model_used': ml_pipeline.best_model_name
-                }
+                    results[device_name] = {
+                        'forecast': forecast_data_formatted,
+                        'model_used': 'ARIMA'
+                    }
 
             except Exception as device_error:
                 logger.error(f"Error predicting for device {device_name}: {device_error}")
@@ -236,15 +201,12 @@ def model_info():
         return jsonify({'error': 'No model loaded'}), 404
     
     return jsonify({
-        'model_name': ml_pipeline.best_model_name,
-        'feature_columns': ml_pipeline.feature_columns,
-        'target_column': ml_pipeline.target_column,
+        'model_name': 'ARIMA',
         'model_loaded': model_loaded
     })
 
-
 if __name__ == '__main__':
-    # Load model on startup
+    # Load ARIMA model on startup
     load_ml_model()
     
     # Run the Flask app

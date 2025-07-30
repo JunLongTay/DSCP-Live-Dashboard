@@ -53,7 +53,7 @@
 
     <!-- Recommendations Container -->
     <div class="mt-4 bg-zinc-900/80 rounded p-3 border border-orange-700">
-      <div class="flex items-center gap-2 mb-2">
+      <div class="flex items-center gap-2 mb-2 cursor-pointer" @click="toggleRecommendations">
         <!-- Icon: Lightbulb -->
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -61,7 +61,9 @@
         </svg>
         <span class="font-semibold text-orange-300">Recommendations</span>
       </div>
-      <div>
+
+      <!-- Conditionally show recommendations content -->
+      <div v-if="showRecommendations">
         <slot name="footer"></slot>
       </div>
     </div>
@@ -78,6 +80,13 @@ const props = defineProps<{
   status:       'Healthy' | 'Dry' | 'Too Wet'
   isForecast?:  boolean
 }>()
+
+// Reactive state to toggle the recommendations visibility
+const showRecommendations = ref(false);
+
+function toggleRecommendations() {
+  showRecommendations.value = !showRecommendations.value;
+}
 
 function formatChange(change: number) {
   return Math.abs(change).toFixed(2)

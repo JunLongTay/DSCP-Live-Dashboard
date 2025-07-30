@@ -65,7 +65,6 @@ const chartOptions: ChartOptions<'line'> = {
       }
     }
   }
-  // …any other scales/legend/title config
 }
 </script>
 
