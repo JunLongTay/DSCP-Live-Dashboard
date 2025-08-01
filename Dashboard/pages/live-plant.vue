@@ -264,10 +264,10 @@
             :device="device"
             :title="`${device} Latest`"
             :value="latestMoisture[device] ?? 0"
-            :change="round(latestMoisture[device] - forecastValues[device]?.[29])"
+            :change="round((forecastValues[device]?.[29] ?? 0) - latestMoisture[device])"
             :changeLabel="'vs forecast'"
             :status="statusTag(latestMoisture[device])"
-            :isForecast="false"
+            :is-forecast="false"
             class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl orange-glow transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl p-6 min-h-[200px]"
           >
             <template #title>
@@ -312,8 +312,225 @@
                   Download
                 </button>
               </div>
+              
+              <!-- Chart Container with Stats Overlay -->
               <div class="relative flex-1 min-h-[400px] overflow-hidden">
                 <Line :id="`historical-${device}`" :data="historicalChart(deviceData[device] ?? [], device, idx)" :options="getChartOptions()" class="h-full w-full" />
+                
+                <!-- Enhanced Stats Container with Pin/Drag functionality -->
+                <div 
+                  class="stats-container"
+                  :class="{
+                    'absolute z-50': pinnedStats[device]?.isPinned,
+                    'absolute top-4 right-4 z-10': !pinnedStats[device]?.isPinned
+                  }"
+                  :style="pinnedStats[device]?.isPinned ? {
+                    left: pinnedStats[device].position.x + 'px',
+                    top: pinnedStats[device].position.y + 'px',
+                    position: 'fixed'
+                  } : {}"
+                  v-show="pinnedStats[device]?.isVisible !== false"
+                  @mouseenter="handleInfoHover(device, true)"
+                  @mouseleave="handleInfoHover(device, false)"
+                >
+                  <div class="bg-zinc-900/95 border border-orange-500/50 rounded-lg backdrop-blur-sm min-w-[200px]">
+                    
+                    <!-- Alert indicator -->
+                    <div v-if="getMoistureChartStats(device)?.alertLevel !== 'none'" 
+                        class="absolute -top-2 -right-2 w-4 h-4 rounded-full animate-pulse"
+                        :class="{
+                          'bg-yellow-500': getMoistureChartStats(device)?.alertLevel === 'warning',
+                          'bg-red-500': getMoistureChartStats(device)?.alertLevel === 'critical'
+                        }">
+                    </div>
+                    
+                    <!-- Enhanced Header with Pin/Drag controls -->
+                    <div class="flex items-center justify-between px-3 py-2 border-b border-orange-700/50">
+                      <!-- Left: Collapsible button -->
+                      <button 
+                        @click="toggleStatsExpansion(device)"
+                        class="flex items-center gap-2 text-xs text-orange-300 font-medium hover:text-orange-200 transition-colors"
+                      >
+                        <span>Moisture Stats</span>
+                        <div class="flex items-center gap-1">
+                          <div class="w-2 h-2 rounded-full"
+                              :class="{
+                                'bg-green-400': getMoistureChartStats(device)?.alertLevel === 'none',
+                                'bg-yellow-400': getMoistureChartStats(device)?.alertLevel === 'warning', 
+                                'bg-red-400': getMoistureChartStats(device)?.alertLevel === 'critical'
+                              }">
+                          </div>
+                          <span class="text-xs"
+                                :class="{
+                                  'text-green-400': getMoistureChartStats(device)?.alertLevel === 'none',
+                                  'text-yellow-400': getMoistureChartStats(device)?.alertLevel === 'warning',
+                                  'text-red-400': getMoistureChartStats(device)?.alertLevel === 'critical'
+                                }"
+                                v-if="getMoistureChartStats(device)?.alertLevel !== 'none'">
+                            {{ getMoistureChartStats(device)?.status }}
+                          </span>
+                        </div>
+                        <svg 
+                          :class="{'rotate-180': isStatsExpanded(device)}" 
+                          class="w-3 h-3 transition-transform" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          stroke-width="2" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                      </button>
+                      
+                      <!-- Right: Pin and visibility controls -->
+                      <div class="flex items-center gap-1">
+                        <!-- Drag handle (only show when pinned) -->
+                        <button 
+                          v-if="pinnedStats[device]?.isPinned"
+                          @mousedown="startDrag($event, device)"
+                          class="p-1 text-orange-400 hover:text-orange-200 cursor-move transition-colors"
+                          title="Drag to move"
+                        >
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16"/>
+                          </svg>
+                        </button>
+                        
+                        <!-- Pin/Unpin button -->
+                        <button 
+                          @click="togglePin(device)"
+                          class="p-1 text-orange-400 hover:text-orange-200 transition-colors"
+                          :title="pinnedStats[device]?.isPinned ? 'Unpin stats' : 'Pin stats'"
+                        >
+                          <svg v-if="pinnedStats[device]?.isPinned" class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M16,12V4H17V2H7V4H8V12L6,14V16H11.2V22H12.8V16H18V14L16,12Z"/>
+                          </svg>
+                          <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                          </svg>
+                        </button>
+                        
+                        <!-- Hide/Show toggle (only show when pinned) -->
+                        <button 
+                          v-if="pinnedStats[device]?.isPinned"
+                          @click="toggleStatsVisibility(device)"
+                          class="p-1 text-orange-400 hover:text-orange-200 transition-colors"
+                          title="Hide stats"
+                        >
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <!-- Collapsible Content -->
+                    <transition name="slide-down">
+                      <div v-if="isStatsExpanded(device)" class="px-3 pb-3">
+                        <div v-if="getMoistureChartStats(device)" class="space-y-2">
+                          
+                          <!-- Trend Indicator -->
+                          <div class="bg-zinc-800/50 rounded p-2 mb-2">
+                            <div class="text-xs text-orange-300 mb-1">Recent Trend</div>
+                            <div class="h-8 flex items-center justify-center">
+                              <div v-if="getMoistureChartStats(device)?.trendStatus === 'Stable'" 
+                                  class="flex items-center gap-2 text-gray-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"/>
+                                </svg>
+                                <span class="text-sm font-medium">Stable</span>
+                              </div>
+                              
+                              <div v-else-if="getMoistureChartStats(device)?.trendStatus?.includes('Increasing') || getMoistureChartStats(device)?.trendStatus?.includes('Rising')" 
+                                  class="flex items-center gap-2 text-blue-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17l9.2-9.2M17 17V7H7"/>
+                                </svg>
+                                <span class="text-sm font-medium">Rising</span>
+                              </div>
+                              
+                              <div v-else-if="getMoistureChartStats(device)?.trendStatus?.includes('Decreasing') || getMoistureChartStats(device)?.trendStatus?.includes('Falling')" 
+                                  class="flex items-center gap-2 text-red-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 7l-9.2 9.2M7 7v10h10"/>
+                                </svg>
+                                <span class="text-sm font-medium">Falling</span>
+                              </div>
+                              
+                              <div v-else class="flex items-center gap-2 text-gray-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span class="text-sm font-medium">Unknown</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <!-- Current Stats -->
+                          <div class="text-xs text-orange-200 space-y-1">
+                            <div class="flex justify-between">
+                              <span>Current:</span>
+                              <span class="font-medium">{{ getMoistureChartStats(device)?.current }}%</span>
+                            </div>
+                            <div class="flex justify-between">
+                              <span>Average:</span>
+                              <span class="font-medium">{{ getMoistureChartStats(device)?.average }}%</span>
+                            </div>
+                            <div class="flex justify-between">
+                              <span>Range:</span>
+                              <span class="font-medium">{{ getMoistureChartStats(device)?.min }}-{{ getMoistureChartStats(device)?.max }}%</span>
+                            </div>
+                          </div>
+                          
+                          <!-- Trend Analysis -->
+                          <div class="border-t border-orange-700/50 pt-2">
+                            <div class="text-xs text-orange-300 mb-1">Trend Analysis</div>
+                            <div class="flex justify-between text-xs text-orange-200">
+                              <span>Rate:</span>
+                              <span class="font-medium"
+                                    :class="{
+                                      'text-blue-400': getMoistureChartStats(device)?.trendStatus?.includes('Increasing') || getMoistureChartStats(device)?.trendStatus?.includes('Rising'),
+                                      'text-red-400': getMoistureChartStats(device)?.trendStatus?.includes('Decreasing') || getMoistureChartStats(device)?.trendStatus?.includes('Falling'),
+                                      'text-gray-400': getMoistureChartStats(device)?.trendStatus === 'Stable'
+                                    }">
+                                {{ getMoistureChartStats(device)?.trend }}%/reading
+                              </span>
+                            </div>
+                            <div class="flex justify-between text-xs text-orange-200">
+                              <span>Status:</span>
+                              <span class="font-medium"
+                                    :class="{
+                                      'text-blue-400': getMoistureChartStats(device)?.trendStatus?.includes('Increasing') || getMoistureChartStats(device)?.trendStatus?.includes('Rising'),
+                                      'text-red-400': getMoistureChartStats(device)?.trendStatus?.includes('Decreasing') || getMoistureChartStats(device)?.trendStatus?.includes('Falling'),
+                                      'text-gray-400': getMoistureChartStats(device)?.trendStatus === 'Stable'
+                                    }">
+                                {{ getMoistureChartStats(device)?.trendStatus }}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <!-- Status Badge -->
+                          <div class="text-center mt-2 px-2 py-1 rounded text-xs border-t border-orange-700/50 pt-2">
+                            <div class="font-medium"
+                                :class="{
+                                  'text-green-400': getMoistureChartStats(device)?.alertLevel === 'none',
+                                  'text-yellow-400': getMoistureChartStats(device)?.alertLevel === 'warning',
+                                  'text-red-400': getMoistureChartStats(device)?.alertLevel === 'critical'
+                                }">
+                              {{ getMoistureChartStats(device)?.status }}
+                            </div>
+                            <div class="text-orange-400 text-xs mt-1">
+                              Optimal: 40-70%
+                            </div>
+                          </div>
+                        </div>
+                        <div v-else class="text-xs text-orange-400">
+                          No data available
+                        </div>
+                      </div>
+                    </transition>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -342,8 +559,233 @@
                 Download
               </button>
             </div>
-            <div class="flex-1 min-h-[500px] overflow-hidden w-full">
+            
+            <!-- Chart Container with Stats Overlay -->
+            <div class="flex-1 min-h-[500px] overflow-hidden w-full relative">
               <Line id="forecast-chart" :data="forecastChart" :options="forecastOptions" class="h-full w-full" />
+              
+              <!-- Enhanced Stats Container with Pin/Drag functionality -->
+              <div 
+                class="stats-container"
+                :class="{
+                  'absolute z-50': pinnedStats['forecast-chart']?.isPinned,
+                  'absolute top-4 right-4 z-10': !pinnedStats['forecast-chart']?.isPinned
+                }"
+                :style="pinnedStats['forecast-chart']?.isPinned ? {
+                  left: pinnedStats['forecast-chart'].position.x + 'px',
+                  top: pinnedStats['forecast-chart'].position.y + 'px',
+                  position: 'fixed'
+                } : {}"
+                v-show="pinnedStats['forecast-chart']?.isVisible !== false"
+                @mouseenter="handleInfoHover('forecast-chart', true)"
+                @mouseleave="handleInfoHover('forecast-chart', false)"
+              >
+                <div class="bg-zinc-900/95 border border-orange-500/50 rounded-lg backdrop-blur-sm min-w-[220px]">
+                  
+                  <!-- Alert indicator -->
+                  <div v-if="getForecastChartStats()?.alertLevel !== 'none'" 
+                      class="absolute -top-2 -right-2 w-4 h-4 rounded-full animate-pulse"
+                      :class="{
+                        'bg-yellow-500': getForecastChartStats()?.alertLevel === 'warning',
+                        'bg-red-500': getForecastChartStats()?.alertLevel === 'critical'
+                      }">
+                  </div>
+                  
+                  <!-- Enhanced Header with Pin/Drag controls -->
+                  <div class="flex items-center justify-between px-3 py-2 border-b border-orange-700/50">
+                    <!-- Left: Collapsible button -->
+                    <button 
+                      @click="toggleForecastStatsExpansion()"
+                      class="flex items-center gap-2 text-xs text-orange-300 font-medium hover:text-orange-200 transition-colors"
+                    >
+                      <span>Forecast Stats</span>
+                      <div class="flex items-center gap-1">
+                        <div class="w-2 h-2 rounded-full"
+                            :class="{
+                              'bg-green-400': getForecastChartStats()?.alertLevel === 'none',
+                              'bg-yellow-400': getForecastChartStats()?.alertLevel === 'warning', 
+                              'bg-red-400': getForecastChartStats()?.alertLevel === 'critical'
+                            }">
+                        </div>
+                        <span class="text-xs"
+                              :class="{
+                                'text-green-400': getForecastChartStats()?.alertLevel === 'none',
+                                'text-yellow-400': getForecastChartStats()?.alertLevel === 'warning',
+                                'text-red-400': getForecastChartStats()?.alertLevel === 'critical'
+                              }"
+                              v-if="getForecastChartStats()?.alertLevel !== 'none'">
+                          {{ getForecastChartStats()?.status }}
+                        </span>
+                      </div>
+                      <svg 
+                        :class="{'rotate-180': isForecastStatsExpanded}" 
+                        class="w-3 h-3 transition-transform" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        stroke-width="2" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                      </svg>
+                    </button>
+                    
+                    <!-- Right: Pin and visibility controls -->
+                    <div class="flex items-center gap-1">
+                      <!-- Drag handle (only show when pinned) -->
+                      <button 
+                        v-if="pinnedStats['forecast-chart']?.isPinned"
+                        @mousedown="startDrag($event, 'forecast-chart')"
+                        class="p-1 text-orange-400 hover:text-orange-200 cursor-move transition-colors"
+                        title="Drag to move"
+                      >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16"/>
+                        </svg>
+                      </button>
+                      
+                      <!-- Pin/Unpin button -->
+                      <button 
+                        @click="togglePin('forecast-chart')"
+                        class="p-1 text-orange-400 hover:text-orange-200 transition-colors"
+                        :title="pinnedStats['forecast-chart']?.isPinned ? 'Unpin stats' : 'Pin stats'"
+                      >
+                        <svg v-if="pinnedStats['forecast-chart']?.isPinned" class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M16,12V4H17V2H7V4H8V12L6,14V16H11.2V22H12.8V16H18V14L16,12Z"/>
+                        </svg>
+                        <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                        </svg>
+                      </button>
+                      
+                      <!-- Hide/Show toggle (only show when pinned) -->
+                      <button 
+                        v-if="pinnedStats['forecast-chart']?.isPinned"
+                        @click="toggleStatsVisibility('forecast-chart')"
+                        class="p-1 text-orange-400 hover:text-orange-200 transition-colors"
+                        title="Hide stats"
+                      >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Collapsible Content -->
+                  <transition name="slide-down">
+                    <div v-if="isForecastStatsExpanded" class="px-3 pb-3">
+                      <div v-if="getForecastChartStats()" class="space-y-2">
+                        
+                        <!-- Forecast Trend Indicator -->
+                        <div class="bg-zinc-800/50 rounded p-2 mb-2">
+                          <div class="text-xs text-orange-300 mb-1">30-Day Trend</div>
+                          <div class="h-8 flex items-center justify-center">
+                            <div v-if="getForecastChartStats()?.trendStatus === 'Stable'" 
+                                class="flex items-center gap-2 text-gray-400">
+                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"/>
+                              </svg>
+                              <span class="text-sm font-medium">Stable</span>
+                            </div>
+                            
+                            <div v-else-if="getForecastChartStats()?.trendStatus?.includes('Increasing') || getForecastChartStats()?.trendStatus?.includes('Rising')" 
+                                class="flex items-center gap-2 text-blue-400">
+                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17l9.2-9.2M17 17V7H7"/>
+                              </svg>
+                              <span class="text-sm font-medium">Rising</span>
+                            </div>
+                            
+                            <div v-else-if="getForecastChartStats()?.trendStatus?.includes('Decreasing') || getForecastChartStats()?.trendStatus?.includes('Falling')" 
+                                class="flex items-center gap-2 text-red-400">
+                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 7l-9.2 9.2M7 7v10h10"/>
+                              </svg>
+                              <span class="text-sm font-medium">Falling</span>
+                            </div>
+                            
+                            <div v-else class="flex items-center gap-2 text-gray-400">
+                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                              </svg>
+                              <span class="text-sm font-medium">Unknown</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <!-- Forecast Stats -->
+                        <div class="text-xs text-orange-200 space-y-1">
+                          <div class="flex justify-between">
+                            <span>Devices:</span>
+                            <span class="font-medium">{{ getForecastChartStats()?.deviceCount }}</span>
+                          </div>
+                          <div class="flex justify-between">
+                            <span>Day 1 Avg:</span>
+                            <span class="font-medium">{{ getForecastChartStats()?.day1 }}%</span>
+                          </div>
+                          <div class="flex justify-between">
+                            <span>Day 30 Avg:</span>
+                            <span class="font-medium">{{ getForecastChartStats()?.day30 }}%</span>
+                          </div>
+                          <div class="flex justify-between">
+                            <span>Overall Avg:</span>
+                            <span class="font-medium">{{ getForecastChartStats()?.average }}%</span>
+                          </div>
+                          <div class="flex justify-between">
+                            <span>Range:</span>
+                            <span class="font-medium">{{ getForecastChartStats()?.min }}-{{ getForecastChartStats()?.max }}%</span>
+                          </div>
+                        </div>
+                        
+                        <!-- Forecast Trend Analysis -->
+                        <div class="border-t border-orange-700/50 pt-2">
+                          <div class="text-xs text-orange-300 mb-1">Trend Analysis</div>
+                          <div class="flex justify-between text-xs text-orange-200">
+                            <span>Change:</span>
+                            <span class="font-medium"
+                                  :class="{
+                                    'text-blue-400': getForecastChartStats()?.trendStatus?.includes('Increasing') || getForecastChartStats()?.trendStatus?.includes('Rising'),
+                                    'text-red-400': getForecastChartStats()?.trendStatus?.includes('Decreasing') || getForecastChartStats()?.trendStatus?.includes('Falling'),
+                                    'text-gray-400': getForecastChartStats()?.trendStatus === 'Stable'
+                                  }">
+                              {{ getForecastChartStats()?.trend }}% over 30 days
+                            </span>
+                          </div>
+                          <div class="flex justify-between text-xs text-orange-200">
+                            <span>Status:</span>
+                            <span class="font-medium"
+                                  :class="{
+                                    'text-blue-400': getForecastChartStats()?.trendStatus?.includes('Increasing') || getForecastChartStats()?.trendStatus?.includes('Rising'),
+                                    'text-red-400': getForecastChartStats()?.trendStatus?.includes('Decreasing') || getForecastChartStats()?.trendStatus?.includes('Falling'),
+                                    'text-gray-400': getForecastChartStats()?.trendStatus === 'Stable'
+                                  }">
+                              {{ getForecastChartStats()?.trendStatus }}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <!-- Status Badge -->
+                        <div class="text-center mt-2 px-2 py-1 rounded text-xs border-t border-orange-700/50 pt-2">
+                          <div class="font-medium"
+                              :class="{
+                                'text-green-400': getForecastChartStats()?.alertLevel === 'none',
+                                'text-yellow-400': getForecastChartStats()?.alertLevel === 'warning',
+                                'text-red-400': getForecastChartStats()?.alertLevel === 'critical'
+                              }">
+                            {{ getForecastChartStats()?.status }}
+                          </div>
+                          <div class="text-orange-400 text-xs mt-1">
+                            {{ getForecastChartStats()?.forecastPeriod }} prediction
+                          </div>
+                        </div>
+                      </div>
+                      <div v-else class="text-xs text-orange-400">
+                        No forecast data available
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+              </div>
             </div>
           </div>
         </template>
@@ -353,6 +795,66 @@
           </div>
         </template>
       </section>
+    </div>
+  </div>
+  <!-- Floating Control Panel for Hidden Pinned Stats -->
+  <div v-if="Object.values(pinnedStats).some(stats => stats.isPinned)" 
+      class="fixed bottom-4 right-4 z-50 bg-zinc-900/95 border border-orange-500/50 rounded-lg backdrop-blur-sm p-2">
+    <div class="text-xs text-orange-300 mb-2 font-medium">Pinned Stats</div>
+    <div class="flex flex-col gap-1">
+      <!-- Device stats -->
+      <template v-for="device in selectedDevices" :key="device">
+        <button 
+          v-if="pinnedStats[device]?.isPinned"
+          @click="toggleStatsVisibility(device)"
+          class="flex items-center gap-2 px-2 py-1 text-xs rounded hover:bg-orange-600/20 transition-colors"
+          :class="{
+            'text-orange-200': pinnedStats[device]?.isVisible,
+            'text-orange-500': !pinnedStats[device]?.isVisible
+          }"
+        >
+          <div class="w-2 h-2 rounded-full"
+              :class="{
+                'bg-green-400': pinnedStats[device]?.isVisible,
+                'bg-gray-500': !pinnedStats[device]?.isVisible
+              }">
+          </div>
+          <span class="truncate max-w-[120px]">{{ device }}</span>
+          <svg v-if="!pinnedStats[device]?.isVisible" class="w-3 h-3 ml-auto" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+          <svg v-else class="w-3 h-3 ml-auto" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L12 12m-3.122-3.122L12 12m0 0l3.122 3.122M12 12l6.879 6.878"/>
+          </svg>
+        </button>
+      </template>
+      
+      <!-- Forecast chart stats -->
+      <button 
+        v-if="pinnedStats['forecast-chart']?.isPinned"
+        @click="toggleStatsVisibility('forecast-chart')"
+        class="flex items-center gap-2 px-2 py-1 text-xs rounded hover:bg-orange-600/20 transition-colors"
+        :class="{
+          'text-orange-200': pinnedStats['forecast-chart']?.isVisible,
+          'text-orange-500': !pinnedStats['forecast-chart']?.isVisible
+        }"
+      >
+        <div class="w-2 h-2 rounded-full"
+            :class="{
+              'bg-green-400': pinnedStats['forecast-chart']?.isVisible,
+              'bg-gray-500': !pinnedStats['forecast-chart']?.isVisible
+            }">
+        </div>
+        <span class="truncate max-w-[120px]">Forecast Chart</span>
+        <svg v-if="!pinnedStats['forecast-chart']?.isVisible" class="w-3 h-3 ml-auto" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+        </svg>
+        <svg v-else class="w-3 h-3 ml-auto" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L12 12m-3.122-3.122L12 12m0 0l3.122 3.122M12 12l6.879 6.878"/>
+        </svg>
+      </button>
     </div>
   </div>
 </template>
@@ -408,6 +910,282 @@ onMounted(() => {
   lastRefresh.value = `${hours}:${minutes} ${day}/${month}/${year}`
 })
 
+// Add these after your existing reactive state (around line 400)
+const expandedStats = reactive<Record<string, boolean>>({})
+const pinnedStats = reactive<Record<string, { isPinned: boolean; position: { x: number; y: number }; isVisible: boolean }>>({})
+const dragState = ref<{ isDragging: boolean; deviceKey: string; startX: number; startY: number; startLeft: number; startTop: number } | null>(null)
+
+// Add hover handler for intelligent tooltip positioning
+const hoverTimeouts = ref<Record<string, NodeJS.Timeout>>({})
+
+function handleInfoHover(device: string, isEntering: boolean) {
+  if (isEntering) {
+    if (hoverTimeouts.value[device]) {
+      clearTimeout(hoverTimeouts.value[device])
+    }
+  } else {
+    hoverTimeouts.value[device] = setTimeout(() => {
+      // Could add logic here to temporarily hide non-essential info
+    }, 500)
+  }
+}
+
+// Initialize stats expansion state for each device
+function initializeStatsExpansion() {
+  selectedDevices.value.forEach(device => {
+    if (!(device in expandedStats)) {
+      expandedStats[device] = false // Start collapsed
+    }
+  })
+}
+
+// (Removed duplicate implementation of initializePinnedStats)
+
+// Toggle stats expansion for a device
+function toggleStatsExpansion(device: string) {
+  expandedStats[device] = !expandedStats[device]
+}
+
+// Check if stats are expanded for a device
+function isStatsExpanded(device: string): boolean {
+  return expandedStats[device] || false
+}
+
+function togglePin(device: string) {
+  if (!pinnedStats[device]) return
+  pinnedStats[device].isPinned = !pinnedStats[device].isPinned
+  
+  if (!pinnedStats[device].isPinned) {
+    pinnedStats[device].position = { x: 10, y: 10 }
+  }
+}
+
+function toggleStatsVisibility(device: string) {
+  if (!pinnedStats[device]) return
+  pinnedStats[device].isVisible = !pinnedStats[device].isVisible
+}
+
+function startDrag(event: MouseEvent, device: string) {
+  if (!pinnedStats[device]?.isPinned) return
+  
+  const rect = (event.target as HTMLElement).closest('.stats-container')?.getBoundingClientRect()
+  if (!rect) return
+  
+  dragState.value = {
+    isDragging: true,
+    deviceKey: device,
+    startX: event.clientX,
+    startY: event.clientY,
+    startLeft: pinnedStats[device].position.x,
+    startTop: pinnedStats[device].position.y
+  }
+  
+  document.addEventListener('mousemove', onDrag)
+  document.addEventListener('mouseup', stopDrag)
+}
+
+function onDrag(event: MouseEvent) {
+  if (!dragState.value) return
+  
+  const deltaX = event.clientX - dragState.value.startX
+  const deltaY = event.clientY - dragState.value.startY
+  
+  pinnedStats[dragState.value.deviceKey].position = {
+    x: Math.max(0, dragState.value.startLeft + deltaX),
+    y: Math.max(0, dragState.value.startTop + deltaY)
+  }
+}
+
+function stopDrag() {
+  dragState.value = null
+  document.removeEventListener('mousemove', onDrag)
+  document.removeEventListener('mouseup', stopDrag)
+}
+
+// Enhanced chart stats with trend analysis for moisture data (CORRECTED)
+const getMoistureChartStats = computed(() => {
+  return (device: string) => {
+    const deviceDataArray = deviceData.value[device] || []
+    if (!deviceDataArray.length) return null
+    
+    const moistureValues = deviceDataArray.map(d => d.moisture).filter(m => m != null) as number[]
+    if (!moistureValues.length) return null
+    
+    const current = moistureValues[0] // Latest reading (first in array since it's sorted newest first)
+    const avg = moistureValues.reduce((a, b) => a + b, 0) / moistureValues.length
+    const min = Math.min(...moistureValues)
+    const max = Math.max(...moistureValues)
+    
+    // Enhanced trend detection (using last 5 readings)
+    const trendData = moistureValues.slice(0, 5) // Get last 5 readings
+    let trend = 0
+    let trendStatus = 'Stable'
+    
+    if (trendData.length >= 3) {
+      // Calculate trend correctly (newest - oldest)
+      const oldestMoisture = trendData[trendData.length - 1] // Oldest of the 5
+      const newestMoisture = trendData[0] // Newest
+      const timeSpanHours = trendData.length - 1
+      
+      if (timeSpanHours > 0) {
+        trend = (newestMoisture - oldestMoisture) / timeSpanHours
+        const absTrend = Math.abs(trend)
+        
+        if (absTrend < 0.5) {
+          trendStatus = 'Stable'
+        } else if (trend > 1.5) {
+          trendStatus = 'Increasing'
+        } else if (trend > 0.5) {
+          trendStatus = 'Rising'
+        } else if (trend < -1.5) {
+          trendStatus = 'Decreasing'
+        } else if (trend < -0.5) {
+          trendStatus = 'Falling'
+        }
+      }
+    }
+    
+    // Status based on current moisture reading (40-70% optimal range)
+    let status = 'Optimal'
+    let alertLevel = 'none'
+    
+    if (current < 20) {
+      status = 'Critical Dry'
+      alertLevel = 'critical'
+    } else if (current < 40) {
+      status = 'Below Optimal'
+      alertLevel = 'warning'
+    } else if (current > 80) {
+      status = 'Critical Wet'
+      alertLevel = 'critical'
+    } else if (current > 70) {
+      status = 'Above Optimal'
+      alertLevel = 'warning'
+    } else {
+      status = 'Optimal' // 40-70% range
+      alertLevel = 'none'
+    }
+    
+    return {
+      current: current?.toFixed(1),
+      average: avg.toFixed(1),
+      min: min.toFixed(1),
+      max: max.toFixed(1),
+      status,
+      alertLevel,
+      trend: trend.toFixed(2),
+      trendStatus,
+      deviceName: device,
+      dataPoints: moistureValues.length
+    }
+  }
+})
+
+// Enhanced forecast stats with trend analysis
+const getForecastChartStats = computed(() => {
+  return () => {
+    if (!selectedDevices.value.length || !forecastChart.value) return null
+    
+    const allForecastValues: number[] = []
+    const deviceForecasts: { device: string; values: number[] }[] = []
+    
+    selectedDevices.value.forEach(device => {
+      const deviceForecast = forecastValues.value[device] || []
+      if (deviceForecast.length) {
+        deviceForecasts.push({ device, values: deviceForecast })
+        allForecastValues.push(...deviceForecast)
+      }
+    })
+    
+    if (!allForecastValues.length) return null
+    
+    // Calculate overall forecast stats
+    const avgForecast = allForecastValues.reduce((a, b) => a + b, 0) / allForecastValues.length
+    const minForecast = Math.min(...allForecastValues)
+    const maxForecast = Math.max(...allForecastValues)
+    
+    // Calculate trend from day 1 to day 30
+    const day1Avg = deviceForecasts.reduce((sum, df) => sum + (df.values[0] || 0), 0) / deviceForecasts.length
+    const day30Avg = deviceForecasts.reduce((sum, df) => sum + (df.values[29] || 0), 0) / deviceForecasts.length
+    
+    const overallTrend = day30Avg - day1Avg
+    let trendStatus = 'Stable'
+    
+    if (Math.abs(overallTrend) < 2) {
+      trendStatus = 'Stable'
+    } else if (overallTrend > 5) {
+      trendStatus = 'Increasing'
+    } else if (overallTrend > 2) {
+      trendStatus = 'Rising'
+    } else if (overallTrend < -5) {
+      trendStatus = 'Decreasing'
+    } else if (overallTrend < -2) {
+      trendStatus = 'Falling'
+    }
+    
+    // Overall status based on forecast average
+    let status = 'Forecasted Healthy'
+    let alertLevel = 'none'
+    
+    if (avgForecast < 30) {
+      status = 'Forecasted Critical Dry'
+      alertLevel = 'critical'
+    } else if (avgForecast < 40) {
+      status = 'Forecasted Below Optimal'
+      alertLevel = 'warning'
+    } else if (avgForecast > 80) {
+      status = 'Forecasted Critical Wet'
+      alertLevel = 'critical'
+    } else if (avgForecast > 70) {
+      status = 'Forecasted Above Optimal'
+      alertLevel = 'warning'
+    }
+    
+    return {
+      average: avgForecast.toFixed(1),
+      min: minForecast.toFixed(1),
+      max: maxForecast.toFixed(1),
+      day1: day1Avg.toFixed(1),
+      day30: day30Avg.toFixed(1),
+      trend: overallTrend.toFixed(1),
+      trendStatus,
+      status,
+      alertLevel,
+      deviceCount: selectedDevices.value.length,
+      forecastPeriod: '30 days'
+    }
+  }
+})
+
+// Add forecast stats expansion state
+const isForecastStatsExpanded = ref(false)
+
+function toggleForecastStatsExpansion() {
+  isForecastStatsExpanded.value = !isForecastStatsExpanded.value
+}
+
+// Update initializePinnedStats to include forecast chart
+function initializePinnedStats() {
+  selectedDevices.value.forEach(device => {
+    if (!(device in pinnedStats)) {
+      pinnedStats[device] = {
+        isPinned: false,
+        position: { x: 10, y: 10 },
+        isVisible: true
+      }
+    }
+  })
+  
+  // Add forecast chart stats
+  if (!('forecast-chart' in pinnedStats)) {
+    pinnedStats['forecast-chart'] = {
+      isPinned: false,
+      position: { x: 10, y: 10 },
+      isVisible: true
+    }
+  }
+}
+
 // 1️⃣ state to hold the recommendation text
 const recommendation = ref('')
 
@@ -417,23 +1195,56 @@ const isFilterDropdownOpen = ref(false)
 const searchQuery = ref('')
 const expandedLocations = ref<string[]>([])
 
-// 1️⃣ Build a map: device → recommendation string
+// Enhanced device recommendations based on current status AND forecast trend
 const deviceRecommendations = computed<Record<string,string>>(() => {
   return selectedDevices.value.reduce((map, device) => {
-    const stat = statusTag(latestMoisture.value[device])
+    const currentMoisture = latestMoisture.value[device] ?? 0
+    const forecastDay30 = forecastValues.value[device]?.[29] ?? 0
+    const change = forecastDay30 - currentMoisture
+    const currentStatus = statusTag(currentMoisture)
     const mlInfo = mlPredictions.value[device]
     const modelUsed = mlInfo?.model_used || 'Linear Regression (Fallback)'
     
     let recommendation = ''
-    if (stat === 'Dry') {
-      recommendation = 'Soil is too dry. Consider watering soon.'
-    } else if (stat === 'Too Wet') {
-      recommendation = 'Soil is too wet. Allow it to dry out before your next watering.'
-    } else {
-      recommendation = 'Moisture is healthy. Keep your current schedule.'
+    
+    // Determine forecast trend
+    const isImproving = change > 5
+    const isStable = Math.abs(change) <= 5
+    const isDeclining = change < -5
+    
+    // Generate recommendations based on current status AND forecast trend
+    if (currentStatus === 'Dry') {
+      if (isImproving) {
+        recommendation = '🌱 Current soil is dry, but forecast shows improvement! Water lightly now and monitor - conditions should naturally improve over the next 30 days.'
+      } else if (isDeclining) {
+        recommendation = '⚠️ Soil is dry and forecast shows further drying! Increase watering frequency immediately and consider adding mulch to retain moisture.'
+      } else {
+        recommendation = '💧 Soil is dry with stable forecast. Water thoroughly now and maintain regular watering schedule.'
+      }
+    } else if (currentStatus === 'Too Wet') {
+      if (isImproving) {
+        recommendation = '☀️ Soil is currently too wet, but forecast shows it will dry to optimal levels. Reduce watering and allow natural drying - perfect timing!'
+      } else if (isDeclining) {
+        recommendation = '🚨 Soil is too wet and forecast shows continued wetness! Stop watering immediately, improve drainage, and ensure good air circulation.'
+      } else {
+        recommendation = '⏸️ Soil is too wet with stable forecast. Pause watering and allow soil to dry out before resuming.'
+      }
+    } else { // Healthy
+      if (isImproving) {
+        recommendation = '✨ Soil is healthy and forecast shows even better conditions ahead! Continue current care routine - you\'re doing great!'
+      } else if (isDeclining) {
+        recommendation = '📉 Soil is currently healthy but forecast shows decline. Consider slightly increasing watering frequency to prevent future dryness.'
+      } else {
+        recommendation = '👍 Soil is healthy with stable forecast. Maintain your current watering schedule - perfect balance!'
+      }
     }
     
-    map[device] = `${recommendation} (Model: ${modelUsed})`
+    // Add forecast insight
+    const trendText = isImproving ? 'improving' : isDeclining ? 'declining' : 'stable'
+    const changeText = Math.abs(change).toFixed(1)
+    
+    map[device] = `${recommendation}\n\n📊 30-day outlook: ${trendText} (${change > 0 ? '+' : ''}${changeText}% change)\n🤖 Model: ${modelUsed}`
+    
     return map
   }, {} as Record<string,string>)
 })
@@ -1185,6 +1996,12 @@ onMounted(async () => {
   }
 })
 
+// Watch for device changes and initialize stats
+watch(selectedDevices, () => {
+  initializeStatsExpansion()
+  initializePinnedStats()
+}, { immediate: true })
+
 // Watch for changes and save to localStorage
 watch(selectedDevices, (newDevices) => {
   sessionStorage.setItem(SELECTED_DEVICES_KEY, JSON.stringify(newDevices))
@@ -1307,5 +2124,41 @@ animation: fade-in 30s cubic-bezier(0.4,0,0.2,1);
   opacity: 1;
   transform: scaleY(1);
   max-height: 500px;
+}
+/* Add to your existing styles */
+.stats-container {
+  transition: all 0.2s ease;
+}
+
+.cursor-move {
+  cursor: move;
+}
+
+.stats-container.absolute {
+  user-select: none;
+}
+
+/* Prevent text selection during drag */
+.stats-container:active {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Alert pulse animation */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>

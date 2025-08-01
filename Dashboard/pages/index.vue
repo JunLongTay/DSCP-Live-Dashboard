@@ -337,7 +337,7 @@
           v-for="(device, idx) in selected"
           :key="device"
           class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6
-           transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
+            transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow min-h-[600px]"
           style="will-change: transform;"
         >
           <!-- Chart Header with pill toggles -->
@@ -379,7 +379,7 @@
             </button>
           </div>
           <!-- Chart Container with Info Overlay -->
-          <div class="relative" style="height: 350px;">
+          <div class="relative" style="height: 500px;">
             <LineChart
               :chart-data="soilChartDataSingleDeviceWithToggle(device, 'Soil Temp (°C)')"
               :chart-options="soilOptions"
@@ -388,163 +388,218 @@
               :id="`soil-temp-chart-${idx}`"
             />
             
-            <!-- Enhanced Stats Container with Sparkline and Trend Analysis -->
-            <div class="absolute top-13 right-2 bg-zinc-900/95 border border-orange-500/50 rounded-lg backdrop-blur-sm z-10 min-w-[200px]"
-                @mouseenter="handleInfoHover(device, true)"
-                @mouseleave="handleInfoHover(device, false)">
-              
-              <!-- Alert indicator -->
-              <div v-if="getChartStats(device)?.alertLevel !== 'none'" 
-                  class="absolute -top-2 -right-2 w-4 h-4 rounded-full animate-pulse"
-                  :class="{
-                    'bg-yellow-500': getChartStats(device)?.alertLevel === 'warning',
-                    'bg-red-500': getChartStats(device)?.alertLevel === 'critical'
-                  }">
-              </div>
-              
-              <!-- Collapsible Header -->
-              <button 
-                @click="toggleStatsExpansion(device)"
-                class="w-full flex items-center justify-between px-3 py-2 text-xs text-orange-300 font-medium hover:text-orange-200 transition-colors"
-              >
-                <div class="flex items-center gap-2">
-                  <span>Stats</span>
-                  <!-- Status indicator -->
+            <!-- Enhanced Stats Container with Pin/Drag functionality -->
+            <div 
+              class="stats-container"
+              :class="{
+                'absolute z-50': pinnedStats[device]?.isPinned,
+                'absolute top-13 right-2 z-10': !pinnedStats[device]?.isPinned
+              }"
+              :style="pinnedStats[device]?.isPinned ? {
+                left: pinnedStats[device].position.x + 'px',
+                top: pinnedStats[device].position.y + 'px',
+                position: 'fixed'
+              } : {}"
+              v-show="pinnedStats[device]?.isVisible !== false"
+              @mouseenter="handleInfoHover(device, true)"
+              @mouseleave="handleInfoHover(device, false)"
+            >
+              <div class="bg-zinc-900/95 border border-orange-500/50 rounded-lg backdrop-blur-sm min-w-[200px]">
+                
+                <!-- Alert indicator -->
+                <div v-if="getChartStats(device)?.alertLevel !== 'none'" 
+                    class="absolute -top-2 -right-2 w-4 h-4 rounded-full animate-pulse"
+                    :class="{
+                      'bg-yellow-500': getChartStats(device)?.alertLevel === 'warning',
+                      'bg-red-500': getChartStats(device)?.alertLevel === 'critical'
+                    }">
+                </div>
+                
+                <!-- Enhanced Header with Pin/Drag controls -->
+                <div class="flex items-center justify-between px-3 py-2 border-b border-orange-700/50">
+                  <!-- Left: Collapsible button -->
+                  <button 
+                    @click="toggleStatsExpansion(device)"
+                    class="flex items-center gap-2 text-xs text-orange-300 font-medium hover:text-orange-200 transition-colors"
+                  >
+                    <span>Stats</span>
+                    <div class="flex items-center gap-1">
+                      <div class="w-2 h-2 rounded-full"
+                          :class="{
+                            'bg-green-400': getChartStats(device)?.alertLevel === 'none',
+                            'bg-yellow-400': getChartStats(device)?.alertLevel === 'warning', 
+                            'bg-red-400': getChartStats(device)?.alertLevel === 'critical'
+                          }">
+                      </div>
+                      <span class="text-xs"
+                            :class="{
+                              'text-green-400': getChartStats(device)?.alertLevel === 'none',
+                              'text-yellow-400': getChartStats(device)?.alertLevel === 'warning',
+                              'text-red-400': getChartStats(device)?.alertLevel === 'critical'
+                            }">
+                        {{ getChartStats(device)?.trendStatus }}
+                      </span>
+                    </div>
+                    <svg 
+                      :class="{'rotate-180': isStatsExpanded(device)}" 
+                      class="w-3 h-3 transition-transform" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      stroke-width="2" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </button>
+                  
+                  <!-- Right: Pin and visibility controls -->
                   <div class="flex items-center gap-1">
-                    <div class="w-2 h-2 rounded-full"
-                        :class="{
-                          'bg-green-400': getChartStats(device)?.alertLevel === 'none',
-                          'bg-yellow-400': getChartStats(device)?.alertLevel === 'warning', 
-                          'bg-red-400': getChartStats(device)?.alertLevel === 'critical'
-                        }">
-                    </div>
-                    <span class="text-xs"
-                          :class="{
-                            'text-green-400': getChartStats(device)?.alertLevel === 'none',
-                            'text-yellow-400': getChartStats(device)?.alertLevel === 'warning',
-                            'text-red-400': getChartStats(device)?.alertLevel === 'critical'
-                          }">
-                      {{ getChartStats(device)?.trendStatus }}
-                    </span>
+                    <!-- Drag handle (only show when pinned) -->
+                    <button 
+                      v-if="pinnedStats[device]?.isPinned"
+                      @mousedown="startDrag($event, device)"
+                      class="p-1 text-orange-400 hover:text-orange-200 cursor-move transition-colors"
+                      title="Drag to move"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16"/>
+                      </svg>
+                    </button>
+                    
+                    <!-- Pin/Unpin button -->
+                    <button 
+                      @click="togglePin(device)"
+                      class="p-1 text-orange-400 hover:text-orange-200 transition-colors"
+                      :title="pinnedStats[device]?.isPinned ? 'Unpin stats' : 'Pin stats'"
+                    >
+                      <svg v-if="pinnedStats[device]?.isPinned" class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M16,12V4H17V2H7V4H8V12L6,14V16H11.2V22H12.8V16H18V14L16,12Z"/>
+                      </svg>
+                      <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                      </svg>
+                    </button>
+                    
+                    <!-- Hide/Show toggle (only show when pinned) -->
+                    <button 
+                      v-if="pinnedStats[device]?.isPinned"
+                      @click="toggleStatsVisibility(device)"
+                      class="p-1 text-orange-400 hover:text-orange-200 transition-colors"
+                      title="Hide stats"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
                   </div>
                 </div>
-                <svg 
-                  :class="{'rotate-180': isStatsExpanded(device)}" 
-                  class="w-3 h-3 transition-transform" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  stroke-width="2" 
-                  viewBox="0 0 24 24"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-              
-              <!-- Collapsible Content -->
-              <transition name="slide-down">
-                <div v-if="isStatsExpanded(device)" class="px-3 pb-3">
-                  <div v-if="getChartStats(device)" class="space-y-2">
-                    
-                    <!-- Trend Indicator (replaces sparkline) -->
-                    <div class="bg-zinc-800/50 rounded p-2 mb-2">
-                      <div class="text-xs text-orange-300 mb-1">12-Hour Trend</div>
-                      <div class="h-8 flex items-center justify-center">
-                        <div v-if="getChartStats(device)?.trendStatus === 'Stable'" 
-                             class="flex items-center gap-2 text-gray-400">
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"/>
-                          </svg>
-                          <span class="text-sm font-medium">Stable</span>
+                
+                <!-- Collapsible Content (your existing content) -->
+                <transition name="slide-down">
+                  <div v-if="isStatsExpanded(device)" class="px-3 pb-3">
+                    <div v-if="getChartStats(device)" class="space-y-2">
+                      
+                      <!-- Trend Indicator (replaces sparkline) -->
+                      <div class="bg-zinc-800/50 rounded p-2 mb-2">
+                        <div class="text-xs text-orange-300 mb-1">12-Hour Trend</div>
+                        <div class="h-8 flex items-center justify-center">
+                          <div v-if="getChartStats(device)?.trendStatus === 'Stable'" 
+                              class="flex items-center gap-2 text-gray-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"/>
+                            </svg>
+                            <span class="text-sm font-medium">Stable</span>
+                          </div>
+                          
+                          <div v-else-if="getChartStats(device)?.trendStatus?.includes('Warming')" 
+                              class="flex items-center gap-2 text-red-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17l9.2-9.2M17 17V7H7"/>
+                            </svg>
+                            <span class="text-sm font-medium">Rising</span>
+                          </div>
+                          
+                          <div v-else-if="getChartStats(device)?.trendStatus?.includes('Cooling')" 
+                              class="flex items-center gap-2 text-blue-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 7l-9.2 9.2M7 7v10h10"/>
+                            </svg>
+                            <span class="text-sm font-medium">Falling</span>
+                          </div>
+                          
+                          <div v-else class="flex items-center gap-2 text-gray-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-sm font-medium">Unknown</span>
+                          </div>
                         </div>
-                        
-                        <div v-else-if="getChartStats(device)?.trendStatus?.includes('Warming')" 
-                             class="flex items-center gap-2 text-red-400">
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17l9.2-9.2M17 17V7H7"/>
-                          </svg>
-                          <span class="text-sm font-medium">Rising</span>
+                      </div>
+                      
+                      <!-- Current Stats -->
+                      <div class="text-xs text-orange-200 space-y-1">
+                        <div class="flex justify-between">
+                          <span>Current:</span>
+                          <span class="font-medium">{{ getChartStats(device)?.current }}°C</span>
                         </div>
-                        
-                        <div v-else-if="getChartStats(device)?.trendStatus?.includes('Cooling')" 
-                             class="flex items-center gap-2 text-blue-400">
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 7l-9.2 9.2M7 7v10h10"/>
-                          </svg>
-                          <span class="text-sm font-medium">Falling</span>
+                        <div class="flex justify-between">
+                          <span>Average:</span>
+                          <span class="font-medium">{{ getChartStats(device)?.average }}°C</span>
                         </div>
-                        
-                        <div v-else class="flex items-center gap-2 text-gray-400">
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                          </svg>
-                          <span class="text-sm font-medium">Unknown</span>
+                        <div class="flex justify-between">
+                          <span>Range:</span>
+                          <span class="font-medium">{{ getChartStats(device)?.min }}-{{ getChartStats(device)?.max }}°C</span>
+                        </div>
+                      </div>
+                      
+                      <!-- Trend Analysis -->
+                      <div class="border-t border-orange-700/50 pt-2">
+                        <div class="text-xs text-orange-300 mb-1">Trend Analysis</div>
+                        <div class="flex justify-between text-xs text-orange-200">
+                          <span>Rate:</span>
+                          <span class="font-medium"
+                                :class="{
+                                  'text-blue-400': getChartStats(device)?.trendStatus === 'Cooling',
+                                  'text-red-400': getChartStats(device)?.trendStatus === 'Warming',
+                                  'text-gray-400': getChartStats(device)?.trendStatus === 'Stable'
+                                }">
+                            {{ getChartStats(device)?.trend }}°C/hr
+                          </span>
+                        </div>
+                        <div class="flex justify-between text-xs text-orange-200">
+                          <span>Status:</span>
+                          <span class="font-medium"
+                                :class="{
+                                  'text-blue-400': getChartStats(device)?.trendStatus === 'Cooling',
+                                  'text-red-400': getChartStats(device)?.trendStatus === 'Warming',
+                                  'text-gray-400': getChartStats(device)?.trendStatus === 'Stable'
+                                }">
+                            {{ getChartStats(device)?.trendStatus }}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <!-- Status Badge -->
+                      <div class="text-center mt-2 px-2 py-1 rounded text-xs border-t border-orange-700/50 pt-2">
+                        <div class="font-medium"
+                            :class="{
+                              'text-green-400': getChartStats(device)?.alertLevel === 'none',
+                              'text-yellow-400': getChartStats(device)?.alertLevel === 'warning',
+                              'text-red-400': getChartStats(device)?.alertLevel === 'critical'
+                            }">
+                          {{ getChartStats(device)?.status }}
+                        </div>
+                        <div class="text-orange-400 text-xs mt-1">
+                          Optimal: 25-32°C
                         </div>
                       </div>
                     </div>
-                    
-                    <!-- Current Stats -->
-                    <div class="text-xs text-orange-200 space-y-1">
-                      <div class="flex justify-between">
-                        <span>Current:</span>
-                        <span class="font-medium">{{ getChartStats(device)?.current }}°C</span>
-                      </div>
-                      <div class="flex justify-between">
-                        <span>Average:</span>
-                        <span class="font-medium">{{ getChartStats(device)?.average }}°C</span>
-                      </div>
-                      <div class="flex justify-between">
-                        <span>Range:</span>
-                        <span class="font-medium">{{ getChartStats(device)?.min }}-{{ getChartStats(device)?.max }}°C</span>
-                      </div>
-                    </div>
-                    
-                    <!-- Trend Analysis -->
-                    <div class="border-t border-orange-700/50 pt-2">
-                      <div class="text-xs text-orange-300 mb-1">Trend Analysis</div>
-                      <div class="flex justify-between text-xs text-orange-200">
-                        <span>Rate:</span>
-                        <span class="font-medium"
-                              :class="{
-                                'text-blue-400': getChartStats(device)?.trendStatus === 'Cooling',
-                                'text-red-400': getChartStats(device)?.trendStatus === 'Warming',
-                                'text-gray-400': getChartStats(device)?.trendStatus === 'Stable'
-                              }">
-                          {{ getChartStats(device)?.trend }}°C/hr
-                        </span>
-                      </div>
-                      <div class="flex justify-between text-xs text-orange-200">
-                        <span>Status:</span>
-                        <span class="font-medium"
-                              :class="{
-                                'text-blue-400': getChartStats(device)?.trendStatus === 'Cooling',
-                                'text-red-400': getChartStats(device)?.trendStatus === 'Warming',
-                                'text-gray-400': getChartStats(device)?.trendStatus === 'Stable'
-                              }">
-                          {{ getChartStats(device)?.trendStatus }}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <!-- Status Badge -->
-                    <div class="text-center mt-2 px-2 py-1 rounded text-xs border-t border-orange-700/50 pt-2">
-                      <div class="font-medium"
-                          :class="{
-                            'text-green-400': getChartStats(device)?.alertLevel === 'none',
-                            'text-yellow-400': getChartStats(device)?.alertLevel === 'warning',
-                            'text-red-400': getChartStats(device)?.alertLevel === 'critical'
-                          }">
-                        {{ getChartStats(device)?.status }}
-                      </div>
-                      <div class="text-orange-400 text-xs mt-1">
-                        Optimal: 25-32°C
-                      </div>
+                    <div v-else class="text-xs text-orange-400">
+                      No data available
                     </div>
                   </div>
-                  <div v-else class="text-xs text-orange-400">
-                    No data available
-                  </div>
-                </div>
-              </transition>
+                </transition>
+              </div>
             </div>
           </div>
           <div class="mt-2 flex items-center justify-between w-full">
@@ -559,7 +614,7 @@
       <!-- 🔸 CO₂ Chart (Actual Only) -->
       <h2 class="text-xl font-semibold mt-6 mb-4 text-orange-400">CO₂ Levels</h2>
       <div v-if="selected.length"
-        class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6 mb-12 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow"
+        class="bg-[#121212] from-zinc-900 via-zinc-800 to-zinc-900 border border-orange-300/20 rounded-xl shadow-xl p-6 mb-12 transition-transform duration-200 hover:-translate-y-1 hover:shadow-2xl flex flex-col orange-glow min-h-[600px]"
         style="will-change: transform;">
         <!-- Pills and Download button aligned in one row -->
         <div class="flex items-center justify-between mb-2">
@@ -590,7 +645,7 @@
           </button>
         </div>
         <!-- Chart Container with Info Overlay -->
-        <div class="relative" style="height: 350px;">
+        <div class="relative" style="height: 500px;">
           <LineChart
             :chart-data="co2Data"
             :chart-options="co2Options"
@@ -600,7 +655,7 @@
           />
           
           <!-- CO₂ Info Container Overlay (Simplified - No Critical High) -->
-          <div class="absolute top-12 right-2 bg-zinc-900/95 border border-orange-500/50 rounded-lg backdrop-blur-sm z-10 min-w-[200px]"
+          <div class="absolute top-10 right-2 bg-zinc-900/95 border border-orange-500/50 rounded-lg backdrop-blur-sm z-10 min-w-[200px]"
               @mouseenter="handleCo2InfoHover(true)"
               @mouseleave="handleCo2InfoHover(false)">
             
@@ -676,6 +731,39 @@
         Please select a device to get started.
       </div>
     </div>
+  </div>
+</div>
+<!-- Floating Control Panel for Hidden Pinned Stats -->
+<div v-if="Object.values(pinnedStats).some(stats => stats.isPinned)" 
+     class="fixed bottom-4 right-4 z-50 bg-zinc-900/95 border border-orange-500/50 rounded-lg backdrop-blur-sm p-2">
+  <div class="text-xs text-orange-300 mb-2 font-medium">Pinned Stats</div>
+  <div class="flex flex-col gap-1">
+    <template v-for="device in selectedDevices" :key="device">
+      <button 
+        v-if="pinnedStats[device]?.isPinned"
+        @click="toggleStatsVisibility(device)"
+        class="flex items-center gap-2 px-2 py-1 text-xs rounded hover:bg-orange-600/20 transition-colors"
+        :class="{
+          'text-orange-200': pinnedStats[device]?.isVisible,
+          'text-orange-500': !pinnedStats[device]?.isVisible
+        }"
+      >
+        <div class="w-2 h-2 rounded-full"
+             :class="{
+               'bg-green-400': pinnedStats[device]?.isVisible,
+               'bg-gray-500': !pinnedStats[device]?.isVisible
+             }">
+        </div>
+        <span class="truncate max-w-[120px]">{{ device }}</span>
+        <svg v-if="!pinnedStats[device]?.isVisible" class="w-3 h-3 ml-auto" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+        </svg>
+        <svg v-else class="w-3 h-3 ml-auto" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L12 12m-3.122-3.122L12 12m0 0l3.122 3.122M12 12l6.879 6.878"/>
+        </svg>
+      </button>
+    </template>
   </div>
 </div>
 </template>
@@ -920,6 +1008,9 @@ watch(selectedDevices, (newDevices) => {
 // Add after your existing reactive state (around line 180)
 const expandedStats = reactive<Record<string, boolean>>({})
 
+const pinnedStats = reactive<Record<string, { isPinned: boolean; position: { x: number; y: number }; isVisible: boolean }>>({})
+const dragState = ref<{ isDragging: boolean; deviceKey: string; startX: number; startY: number; startLeft: number; startTop: number } | null>(null)
+
 // Add hover handler for intelligent tooltip positioning
 const hoverTimeouts = ref<Record<string, NodeJS.Timeout>>({})
 
@@ -961,6 +1052,7 @@ function isStatsExpanded(device: string): boolean {
 // Watch for device changes and initialize stats
 watch(selectedDevices, () => {
   initializeStatsExpansion()
+  initializePinnedStats() // Add this line
 }, { immediate: true })
 
 // CO₂ sparkline functionality
@@ -1079,6 +1171,70 @@ function statusClass(status: string) {
     default:
       return 'bg-gray-100 text-gray-600 hover:bg-gray-200'
   }
+}
+// Add after your existing helper functions
+function initializePinnedStats() {
+  selectedDevices.value.forEach(device => {
+    if (!(device in pinnedStats)) {
+      pinnedStats[device] = {
+        isPinned: false,
+        position: { x: 10, y: 10 },
+        isVisible: true
+      }
+    }
+  })
+}
+
+function togglePin(device: string) {
+  if (!pinnedStats[device]) return
+  pinnedStats[device].isPinned = !pinnedStats[device].isPinned
+  
+  // If unpinning, reset position to default
+  if (!pinnedStats[device].isPinned) {
+    pinnedStats[device].position = { x: 10, y: 10 }
+  }
+}
+
+function toggleStatsVisibility(device: string) {
+  if (!pinnedStats[device]) return
+  pinnedStats[device].isVisible = !pinnedStats[device].isVisible
+}
+
+function startDrag(event: MouseEvent, device: string) {
+  if (!pinnedStats[device]?.isPinned) return
+  
+  const rect = (event.target as HTMLElement).closest('.stats-container')?.getBoundingClientRect()
+  if (!rect) return
+  
+  dragState.value = {
+    isDragging: true,
+    deviceKey: device,
+    startX: event.clientX,
+    startY: event.clientY,
+    startLeft: pinnedStats[device].position.x,
+    startTop: pinnedStats[device].position.y
+  }
+  
+  document.addEventListener('mousemove', onDrag)
+  document.addEventListener('mouseup', stopDrag)
+}
+
+function onDrag(event: MouseEvent) {
+  if (!dragState.value) return
+  
+  const deltaX = event.clientX - dragState.value.startX
+  const deltaY = event.clientY - dragState.value.startY
+  
+  pinnedStats[dragState.value.deviceKey].position = {
+    x: Math.max(0, dragState.value.startLeft + deltaX),
+    y: Math.max(0, dragState.value.startTop + deltaY)
+  }
+}
+
+function stopDrag() {
+  dragState.value = null
+  document.removeEventListener('mousemove', onDrag)
+  document.removeEventListener('mouseup', stopDrag)
 }
 /* ── NPK fetch/avg ───────────────── */
 const npkData = ref<NPKReading[]>([])
@@ -1746,10 +1902,10 @@ const co2Options: ChartOptions<'line'> = {
   maintainAspectRatio: false,
   layout: {
     padding: {
-      top: 10,
-      right: 10,
-      bottom: 40,
-      left: 10
+      top: 20,     // Increased from 10
+      right: 20,   // Increased from 10
+      bottom: 50,  // Increased from 40
+      left: 20     // Increased from 10
     }
   },
   scales: {
