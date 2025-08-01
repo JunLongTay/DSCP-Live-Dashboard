@@ -1149,6 +1149,48 @@ function getSelectedDevicesPreview(): string {
   return `${selectedDevices.value.slice(0, 2).join(', ')} and ${selectedDevices.value.length - 2} more`
 }
 
+const SELECTED_DEVICES_KEY = 'dashboard_live_plant_selected_devices'
+onMounted(async () => {
+  // Load saved devices from sessionstorage FIRST
+  const savedDevices = sessionStorage.getItem(SELECTED_DEVICES_KEY)
+  if (savedDevices) {
+    try {
+      const parsed = JSON.parse(savedDevices)
+      if (Array.isArray(parsed)) {
+        selectedDevices.value = parsed
+      }
+    } catch (e) {
+      console.warn('Failed to parse saved devices:', e)
+    }
+  }
+
+  // Format last refresh time
+  const now = new Date()
+  const hours   = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const day     = String(now.getDate()).padStart(2, '0')
+  const month   = String(now.getMonth() + 1).padStart(2, '0')
+  const year    = now.getFullYear()
+  lastRefresh.value = `${hours}:${minutes} ${day}/${month}/${year}`
+
+  // Setup outside click detection for dropdown
+  if (dropdownRef.value) {
+    onClickOutside(dropdownRef, () => (isFilterDropdownOpen.value = false))
+  }
+
+  // Check if ML API is available (your existing code)
+  const mlApiAvailable = await checkMLApiHealth()
+  if (!mlApiAvailable) {
+    console.warn('ML API is not available, falling back to simple forecasting')
+  }
+})
+
+// Watch for changes and save to localStorage
+watch(selectedDevices, (newDevices) => {
+  sessionStorage.setItem(SELECTED_DEVICES_KEY, JSON.stringify(newDevices))
+}, { deep: true })
+
+
 // Get device status for status indicator
 function getDeviceStatus(device: string): string {
   const moisture = latestMoisture.value[device]

@@ -378,13 +378,175 @@
               Download
             </button>
           </div>
-          <LineChart
-            :chart-data="soilChartDataSingleDeviceWithToggle(device, 'Soil Temp (°C)')"
-            :chart-options="soilOptions"
-            class="h-60"
-            :ref="el => setSoilTempChartRef(el, idx)"
-            :id="`soil-temp-chart-${idx}`"
-          />
+          <!-- Chart Container with Info Overlay -->
+          <div class="relative" style="height: 350px;">
+            <LineChart
+              :chart-data="soilChartDataSingleDeviceWithToggle(device, 'Soil Temp (°C)')"
+              :chart-options="soilOptions"
+              class="w-full h-full"
+              :ref="el => setSoilTempChartRef(el, idx)"
+              :id="`soil-temp-chart-${idx}`"
+            />
+            
+            <!-- Enhanced Stats Container with Sparkline and Trend Analysis -->
+            <div class="absolute top-13 right-2 bg-zinc-900/95 border border-orange-500/50 rounded-lg backdrop-blur-sm z-10 min-w-[200px]"
+                @mouseenter="handleInfoHover(device, true)"
+                @mouseleave="handleInfoHover(device, false)">
+              
+              <!-- Alert indicator -->
+              <div v-if="getChartStats(device)?.alertLevel !== 'none'" 
+                  class="absolute -top-2 -right-2 w-4 h-4 rounded-full animate-pulse"
+                  :class="{
+                    'bg-yellow-500': getChartStats(device)?.alertLevel === 'warning',
+                    'bg-red-500': getChartStats(device)?.alertLevel === 'critical'
+                  }">
+              </div>
+              
+              <!-- Collapsible Header -->
+              <button 
+                @click="toggleStatsExpansion(device)"
+                class="w-full flex items-center justify-between px-3 py-2 text-xs text-orange-300 font-medium hover:text-orange-200 transition-colors"
+              >
+                <div class="flex items-center gap-2">
+                  <span>Stats</span>
+                  <!-- Status indicator -->
+                  <div class="flex items-center gap-1">
+                    <div class="w-2 h-2 rounded-full"
+                        :class="{
+                          'bg-green-400': getChartStats(device)?.alertLevel === 'none',
+                          'bg-yellow-400': getChartStats(device)?.alertLevel === 'warning', 
+                          'bg-red-400': getChartStats(device)?.alertLevel === 'critical'
+                        }">
+                    </div>
+                    <span class="text-xs"
+                          :class="{
+                            'text-green-400': getChartStats(device)?.alertLevel === 'none',
+                            'text-yellow-400': getChartStats(device)?.alertLevel === 'warning',
+                            'text-red-400': getChartStats(device)?.alertLevel === 'critical'
+                          }">
+                      {{ getChartStats(device)?.trendStatus }}
+                    </span>
+                  </div>
+                </div>
+                <svg 
+                  :class="{'rotate-180': isStatsExpanded(device)}" 
+                  class="w-3 h-3 transition-transform" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  stroke-width="2" 
+                  viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+              
+              <!-- Collapsible Content -->
+              <transition name="slide-down">
+                <div v-if="isStatsExpanded(device)" class="px-3 pb-3">
+                  <div v-if="getChartStats(device)" class="space-y-2">
+                    
+                    <!-- Trend Indicator (replaces sparkline) -->
+                    <div class="bg-zinc-800/50 rounded p-2 mb-2">
+                      <div class="text-xs text-orange-300 mb-1">12-Hour Trend</div>
+                      <div class="h-8 flex items-center justify-center">
+                        <div v-if="getChartStats(device)?.trendStatus === 'Stable'" 
+                             class="flex items-center gap-2 text-gray-400">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"/>
+                          </svg>
+                          <span class="text-sm font-medium">Stable</span>
+                        </div>
+                        
+                        <div v-else-if="getChartStats(device)?.trendStatus?.includes('Warming')" 
+                             class="flex items-center gap-2 text-red-400">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17l9.2-9.2M17 17V7H7"/>
+                          </svg>
+                          <span class="text-sm font-medium">Rising</span>
+                        </div>
+                        
+                        <div v-else-if="getChartStats(device)?.trendStatus?.includes('Cooling')" 
+                             class="flex items-center gap-2 text-blue-400">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 7l-9.2 9.2M7 7v10h10"/>
+                          </svg>
+                          <span class="text-sm font-medium">Falling</span>
+                        </div>
+                        
+                        <div v-else class="flex items-center gap-2 text-gray-400">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          </svg>
+                          <span class="text-sm font-medium">Unknown</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Current Stats -->
+                    <div class="text-xs text-orange-200 space-y-1">
+                      <div class="flex justify-between">
+                        <span>Current:</span>
+                        <span class="font-medium">{{ getChartStats(device)?.current }}°C</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span>Average:</span>
+                        <span class="font-medium">{{ getChartStats(device)?.average }}°C</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span>Range:</span>
+                        <span class="font-medium">{{ getChartStats(device)?.min }}-{{ getChartStats(device)?.max }}°C</span>
+                      </div>
+                    </div>
+                    
+                    <!-- Trend Analysis -->
+                    <div class="border-t border-orange-700/50 pt-2">
+                      <div class="text-xs text-orange-300 mb-1">Trend Analysis</div>
+                      <div class="flex justify-between text-xs text-orange-200">
+                        <span>Rate:</span>
+                        <span class="font-medium"
+                              :class="{
+                                'text-blue-400': getChartStats(device)?.trendStatus === 'Cooling',
+                                'text-red-400': getChartStats(device)?.trendStatus === 'Warming',
+                                'text-gray-400': getChartStats(device)?.trendStatus === 'Stable'
+                              }">
+                          {{ getChartStats(device)?.trend }}°C/hr
+                        </span>
+                      </div>
+                      <div class="flex justify-between text-xs text-orange-200">
+                        <span>Status:</span>
+                        <span class="font-medium"
+                              :class="{
+                                'text-blue-400': getChartStats(device)?.trendStatus === 'Cooling',
+                                'text-red-400': getChartStats(device)?.trendStatus === 'Warming',
+                                'text-gray-400': getChartStats(device)?.trendStatus === 'Stable'
+                              }">
+                          {{ getChartStats(device)?.trendStatus }}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <!-- Status Badge -->
+                    <div class="text-center mt-2 px-2 py-1 rounded text-xs border-t border-orange-700/50 pt-2">
+                      <div class="font-medium"
+                          :class="{
+                            'text-green-400': getChartStats(device)?.alertLevel === 'none',
+                            'text-yellow-400': getChartStats(device)?.alertLevel === 'warning',
+                            'text-red-400': getChartStats(device)?.alertLevel === 'critical'
+                          }">
+                        {{ getChartStats(device)?.status }}
+                      </div>
+                      <div class="text-orange-400 text-xs mt-1">
+                        Optimal: 25-32°C
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="text-xs text-orange-400">
+                    No data available
+                  </div>
+                </div>
+              </transition>
+            </div>
+          </div>
           <div class="mt-2 flex items-center justify-between w-full">
             <div class="text-center text-orange-400 font-semibold text-base">Chart: Soil Temp - {{ device }}</div>
           </div>
@@ -427,13 +589,88 @@
             Download
           </button>
         </div>
-        <LineChart
-          :chart-data="co2Data"
-          :chart-options="co2Options"
-          ref="co2Chart"
-          id="co2-chart"
-          class="h-60"
-        />
+        <!-- Chart Container with Info Overlay -->
+        <div class="relative" style="height: 350px;">
+          <LineChart
+            :chart-data="co2Data"
+            :chart-options="co2Options"
+            ref="co2Chart"
+            id="co2-chart"
+            class="w-full h-full"
+          />
+          
+          <!-- CO₂ Info Container Overlay (Simplified - No Critical High) -->
+          <div class="absolute top-12 right-2 bg-zinc-900/95 border border-orange-500/50 rounded-lg backdrop-blur-sm z-10 min-w-[200px]"
+              @mouseenter="handleCo2InfoHover(true)"
+              @mouseleave="handleCo2InfoHover(false)">
+            
+            <!-- Collapsible Header (removed alert indicator) -->
+            <button 
+              @click="toggleCo2StatsExpansion()"
+              class="w-full flex items-center justify-between px-3 py-2 text-xs text-orange-300 font-medium hover:text-orange-200 transition-colors"
+            >
+              <div class="flex items-center gap-2">
+                <span>CO₂ Stats</span>
+                <!-- Status indicator (simplified - no critical alerts) -->
+                <div class="flex items-center gap-1">
+                  <div class="w-2 h-2 rounded-full bg-green-400">
+                  </div>
+                </div>
+              </div>
+              <svg 
+                :class="{'rotate-180': isCo2StatsExpanded}" 
+                class="w-3 h-3 transition-transform" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+            
+            <!-- Collapsible Content -->
+            <transition name="slide-down">
+              <div v-if="isCo2StatsExpanded" class="px-3 pb-3">
+                <div v-if="getCo2EnhancedStats()" class="space-y-2">
+                  
+                  <!-- Current Stats Only -->
+                  <div class="text-xs text-orange-200 space-y-1">
+                    <div class="flex justify-between">
+                      <span>Devices:</span>
+                      <span class="font-medium">{{ getCo2EnhancedStats()?.deviceCount }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span>Current:</span>
+                      <span class="font-medium">{{ getCo2EnhancedStats()?.current }} ppm</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span>Average:</span>
+                      <span class="font-medium">{{ getCo2EnhancedStats()?.average }} ppm</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span>Range:</span>
+                      <span class="font-medium">{{ getCo2EnhancedStats()?.min }}-{{ getCo2EnhancedStats()?.max }} ppm</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Status Badge (simplified) -->
+                  <div class="text-center mt-2 px-2 py-1 rounded text-xs border-t border-orange-700/50 pt-2">
+                    <div class="font-medium text-green-400">
+                      Normal Operation
+                    </div>
+                    <div class="text-orange-400 text-xs mt-1">
+                      System Running
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="text-xs text-orange-400">
+                  No CO₂ data available
+                </div>
+              </div>
+            </transition>
+          </div>
+        </div>
       </div>
       <div v-else class="flex items-center justify-center h-32 text-orange-300 text-lg font-bold">
         Please select a device to get started.
@@ -456,15 +693,79 @@ import {
   MenuItem, 
   MenuItems, 
 } from '@headlessui/vue'
-import { ref, computed, watchEffect, onMounted, nextTick, reactive } from 'vue'
+import { ref, computed, watchEffect, onMounted, nextTick, reactive, onUnmounted } from 'vue'
 import type { ChartData, ChartOptions } from 'chart.js'
 import 'chartjs-adapter-date-fns'
 import { Transition } from 'vue'
 import { Button } from '@/components/ui/button'
 import { onClickOutside } from '@vueuse/core'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js'
+import annotationPlugin from 'chartjs-plugin-annotation'
+
+// Register the annotation plugin
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  annotationPlugin
+)
 
 // On mount, record the page load time in “HH:mm DD/MM/YYYY” format
-const lastRefresh = ref('')
+const lastRefresh = computed(() => {
+  // Access refreshTrigger to make this reactive to manual updates
+  refreshTrigger.value
+  
+  const stored = sessionStorage.getItem('last-data-refresh')
+  if (stored) {
+    const date = new Date(stored)
+    const hours   = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    const day     = String(date.getDate()).padStart(2, '0')
+    const month   = String(date.getMonth() + 1).padStart(2, '0')
+    const year    = date.getFullYear()
+    return `${hours}:${minutes} ${day}/${month}/${year}`
+  }
+  
+  // Fallback to current time if no stored value
+  const now = new Date()
+  const hours   = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const day     = String(now.getDate()).padStart(2, '0')
+  const month   = String(now.getMonth() + 1).padStart(2, '0')
+  const year    = now.getFullYear()
+  return `${hours}:${minutes} ${day}/${month}/${year}`
+})
+
+const refreshTrigger = ref(0)
+
+let handleStorageChange: (e: StorageEvent) => void
+let handleRefreshEvent: () => void
+
+// Define the handler functions
+handleStorageChange = (e: StorageEvent) => {
+  if (e.key === 'last-data-refresh') {
+    refreshTrigger.value++ // Force reactivity
+  }
+}
+
+handleRefreshEvent = () => {
+  refreshTrigger.value++ // Force reactivity
+}
 
 const backendAvailable = ref(true);
 
@@ -479,18 +780,17 @@ onMounted(async () => {
   } catch (e) {
     backendAvailable.value = false;
   }
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'last-data-refresh') {
+      refreshTrigger.value++ // Force reactivity
+    }
+  })
+  
+  // Also listen for custom events from the sidebar
+  window.addEventListener('refresh-dashboard-data', () => {
+    refreshTrigger.value++ // Force reactivity
+  })
 });
-
-onMounted(() => {
-  // Format as “HH:mm DD/MM/YYYY”
-  const now = new Date()
-  const hours   = String(now.getHours()).padStart(2, '0')
-  const minutes = String(now.getMinutes()).padStart(2, '0')
-  const day     = String(now.getDate()).padStart(2, '0')
-  const month   = String(now.getMonth() + 1).padStart(2, '0')
-  const year    = now.getFullYear()
-  lastRefresh.value = `${hours}:${minutes} ${day}/${month}/${year}`
-})
 
 /* ── Types ───────────────────────── */
 interface NPKReading { timestamp: string; nitrogen: number | null; phosphorus: number | null; potassium: number | null; devicename: string }
@@ -570,7 +870,7 @@ const locationDeviceMap = computed(() => {
 const locationList = computed(() => Object.keys(locationDeviceMap.value).sort())
 
 /* ── State ───────────────────────── */
-const SELECTED_DEVICES_KEY = 'dashboard_selected_devices'
+const SELECTED_DEVICES_KEY = 'dashboard_overview_selected_devices' // Changed from 'dashboard_selected_devices'
 // Replace simple selected array with selectedDevices
 const selectedDevices = ref<string[]>([])
 // Update selected to use selectedDevices for backward compatibility
@@ -578,6 +878,159 @@ const selected = computed({
   get: () => selectedDevices.value,
   set: (val) => { selectedDevices.value = val }
 })
+
+onMounted(async () => {
+  // Load saved devices from sessionStorage FIRST
+  const savedDevices = sessionStorage.getItem(SELECTED_DEVICES_KEY)
+  if (savedDevices) {
+    try {
+      const parsed = JSON.parse(savedDevices)
+      if (Array.isArray(parsed)) {
+        selectedDevices.value = parsed
+      }
+    } catch (e) {
+      console.warn('Failed to parse saved devices:', e)
+    }
+  }
+
+  // Then fetch device names from backend
+  try {
+    allDeviceNamesRaw.value = await $fetch<string[]>('http://localhost:3001/np-devices')
+    backendAvailable.value = true
+  } catch (e) {
+    backendAvailable.value = false
+  }
+
+  // Initialize sessionStorage for last refresh if not set
+  if (!sessionStorage.getItem('last-data-refresh')) {
+    sessionStorage.setItem('last-data-refresh', new Date().toISOString())
+  }
+
+  // Setup outside click detection for dropdown
+  if (dropdownRef.value) {
+    onClickOutside(dropdownRef, () => (isFilterDropdownOpen.value = false))
+  }
+})
+
+// Watch for device selection changes and save to sessionStorage
+watch(selectedDevices, (newDevices) => {
+  sessionStorage.setItem(SELECTED_DEVICES_KEY, JSON.stringify(newDevices)) // ✅ Writing to sessionStorage
+}, { deep: true })
+
+// Add after your existing reactive state (around line 180)
+const expandedStats = reactive<Record<string, boolean>>({})
+
+// Add hover handler for intelligent tooltip positioning
+const hoverTimeouts = ref<Record<string, NodeJS.Timeout>>({})
+
+function handleInfoHover(device: string, isEntering: boolean) {
+  if (isEntering) {
+    // Clear any existing timeout
+    if (hoverTimeouts.value[device]) {
+      clearTimeout(hoverTimeouts.value[device])
+    }
+    // Update sparkline when hovering
+    // (No sparkline function for soil temp; nothing to do here)
+  } else {
+    // Set a small delay before hiding detailed info
+    hoverTimeouts.value[device] = setTimeout(() => {
+      // Could add logic here to temporarily hide non-essential info
+    }, 500)
+  }
+}
+
+// Initialize stats expansion state for each device
+function initializeStatsExpansion() {
+  selectedDevices.value.forEach(device => {
+    if (!(device in expandedStats)) {
+      expandedStats[device] = false // Start collapsed
+    }
+  })
+}
+
+// Toggle stats expansion for a device
+function toggleStatsExpansion(device: string) {
+  expandedStats[device] = !expandedStats[device]
+}
+
+// Check if stats are expanded for a device
+function isStatsExpanded(device: string): boolean {
+  return expandedStats[device] || false
+}
+
+// Watch for device changes and initialize stats
+watch(selectedDevices, () => {
+  initializeStatsExpansion()
+}, { immediate: true })
+
+// CO₂ sparkline functionality
+const co2SparklineRef = ref<HTMLCanvasElement | null>(null)
+const co2SparklineChart = ref<any>(null)
+
+function setCo2SparklineRef(el: HTMLCanvasElement | null) {
+  if (el) {
+    co2SparklineRef.value = el
+    nextTick(() => createCo2Sparkline())
+  }
+}
+
+function createCo2Sparkline() {
+  const canvas = co2SparklineRef.value
+  if (!canvas) return
+  
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  
+  // Destroy existing chart if it exists
+  if (co2SparklineChart.value) {
+    co2SparklineChart.value.destroy()
+  }
+  
+  const stats = getCo2EnhancedStats.value()
+  if (!stats?.sparklineData) return
+  
+  co2SparklineChart.value = new ChartJS(ctx, {
+    type: 'line',
+    data: {
+      labels: stats.sparklineData.map((_, i) => i),
+      datasets: [{
+        data: stats.sparklineData,
+        borderColor: '#fb923c',
+        backgroundColor: 'rgba(251, 146, 60, 0.1)',
+        borderWidth: 1,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { display: false },
+        y: { 
+          display: false,
+          min: 200,
+          max: 1500
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false }
+      },
+      elements: {
+        point: { radius: 0 }
+      }
+    }
+  })
+}
+
+// CO₂ hover handler
+function handleCo2InfoHover(isEntering: boolean) {
+  if (isEntering) {
+    nextTick(() => createCo2Sparkline())
+  }
+}
 
 // Combined filter state
 const isFilterDropdownOpen = ref(false)
@@ -733,6 +1186,80 @@ const npkRecommendations = computed<Record<string,string>>(() => {
   return recs
 })
 
+// Enhanced chart stats with trend analysis
+const getChartStats = computed(() => {
+  return (device: string) => {
+    const deviceData = soilRaw.value.filter(r => r.devicename === device)
+    if (!deviceData.length) return null
+    
+    const temps = deviceData.map(d => d.soil_temp).filter(t => t != null) as number[]
+    if (!temps.length) return null
+    
+    const current = temps[temps.length - 1]
+    const avg = temps.reduce((a, b) => a + b, 0) / temps.length
+    const min = Math.min(...temps)
+    const max = Math.max(...temps)
+    
+    // Enhanced trend detection
+    const trendData = temps.slice(-5)
+    let trend = 0
+    let trendStatus = 'Stable'
+    
+    if (trendData.length >= 3) {
+      const firstTemp = trendData[0]
+      const lastTemp = trendData[trendData.length - 1]
+      const timeSpanHours = trendData.length - 1
+      
+      if (timeSpanHours > 0) {
+        trend = (lastTemp - firstTemp) / timeSpanHours
+        const absTrend = Math.abs(trend)
+        
+        if (absTrend < 0.05) {
+          trendStatus = 'Stable'
+        } else if (trend > 0.15) {
+          trendStatus = 'Warming (trending)'
+        } else if (trend > 0.05) {
+          trendStatus = 'Warming (drifting)'
+        } else if (trend < -0.15) {
+          trendStatus = 'Cooling (trending)'
+        } else if (trend < -0.05) {
+          trendStatus = 'Cooling (drifting)'
+        }
+      }
+    }
+    
+    // Status based on optimal range
+    let status = 'Optimal'
+    let alertLevel = 'none'
+    
+    if (current < 23) {
+      status = 'Critical Low'
+      alertLevel = 'critical'
+    } else if (current < 25) {
+      status = 'Low'
+      alertLevel = 'warning'
+    } else if (current > 34) {
+      status = 'Critical High'
+      alertLevel = 'critical'
+    } else if (current > 32) {
+      status = 'High'
+      alertLevel = 'warning'
+    }
+    
+    return {
+      current: current?.toFixed(1),
+      average: avg.toFixed(1),
+      min: min.toFixed(1),
+      max: max.toFixed(1),
+      status,
+      alertLevel,
+      trend: trend.toFixed(2),
+      trendStatus,
+      trendRate: `${trend > 0 ? '+' : ''}${trend.toFixed(1)}`, // Formatted rate
+    }
+  }
+})
+
 /* ── Soil helpers ─────────────────── */
 const TEMP_RANGE  = { low: 25, high: 32 }
 
@@ -745,7 +1272,6 @@ watchEffect(async () => {
 
   const url = `http://localhost:3001/soil-temp-co2?bucket_min=${bucket}&window_min=${windowMin}`
   soilRaw.value = await $fetch<SoilReading[]>(url)
-  console.log('Fetched soil temperature data:', soilRaw.value) // <-- Added console log
 })
 
 const filteredSoilRaw = computed<SoilReading[]>(() => {
@@ -889,39 +1415,238 @@ function soilChartDataSingleDeviceWithToggle(device: string, label: string): Cha
 const soilOptions: ChartOptions<'line'> = {
   responsive: true,
   maintainAspectRatio: false,
+  layout: {
+    padding: {
+      top: 10,
+      right: 10,
+      bottom: 40,
+      left: 10
+    }
+  },
   scales: {
     x: {
-      type: 'category',      // now using string categories
+      type: 'category',
+      title: {
+        display: true,
+        text: 'Time',
+        color: '#fb923c'
+      },
       ticks: {
         maxRotation: 0,
         autoSkip: true,
         maxTicksLimit: 12,
+        color: '#fb923c'
       },
+      grid: {
+        color: '#fb923c33'
+      }
     },
     y: {
-      // your y‑axis settings…
-    },
+      title: {
+        display: true,
+        text: 'Temperature (°C)',
+        color: '#fb923c'
+      },
+      ticks: {
+        color: '#fb923c'
+      },
+      grid: {
+        color: '#fb923c33'
+      },
+      min: 20,
+      max: 40
+    }
   },
   plugins: {
     decimation: { enabled: true, algorithm: 'lttb', samples: 60 },
     tooltip: {
-      callbacks: {
-        afterBody(items) {
-          const item = items?.[0]
-          if (!item) return ''
-          const lbl = String(item.dataset?.label ?? '')
-          const v = item.parsed?.y
-          if (v == null) return ''
-          const isTemp = lbl.includes('Temp')
-          const range = TEMP_RANGE
-          if (v < range.low)  return isTemp ? 'Below ideal range' : 'Too dry'
-          if (v > range.high) return isTemp ? 'Above ideal range' : 'Too wet'
-          return isTemp ? 'Within ideal range' : 'Healthy moisture'
-        },
-      },
+      enabled: false, // Disable default tooltip for non-blocking experience
     },
+    legend: {
+      display: true,
+      position: 'top',
+      labels: {
+        color: '#fb923c',
+        usePointStyle: true,
+        padding: 15
+      }
+    },
+    // Add annotation plugin for optimal band
+    annotation: {
+      annotations: {
+        optimalBand: {
+          type: 'box',
+          yMin: 25,
+          yMax: 32,
+          backgroundColor: 'rgba(34, 197, 94, 0.1)',
+          borderColor: 'rgba(34, 197, 94, 0.3)',
+          borderWidth: 1,
+          label: {
+            display: true,
+            content: 'Optimal Range (25-32°C)',
+            position: 'start',
+            color: '#22c55e',
+            padding: 4,
+            font: {
+              size: 10
+            }
+          }
+        },
+        warningLowLine: {
+          type: 'line',
+          yMin: 23,
+          yMax: 23,
+          borderColor: 'rgba(251, 191, 36, 0.8)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          label: {
+            display: true,
+            content: 'Critical Low (23°C)',
+            position: 'end',
+            color: '#fbbf24',
+            backgroundColor: 'rgba(251, 191, 36, 0.8)',
+            padding: 2,
+            font: {
+              size: 9
+            }
+          }
+        },
+        warningHighLine: {
+          type: 'line',
+          yMin: 34,
+          yMax: 34,
+          borderColor: 'rgba(239, 68, 68, 0.8)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          label: {
+            display: true,
+            content: 'Critical High (34°C)',
+            position: 'end',
+            color: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.8)',
+            padding: 2,
+            font: {
+              size: 9
+            }
+          }
+        }
+      }
+    }
   },
+  interaction: {
+    intersect: false,
+    mode: 'index'
+  }
 }
+
+// Computed to get current CO₂ chart stats for each device
+const getCo2ChartStats = computed(() => {
+  return (device: string) => {
+    const deviceData = co2Raw.value.filter(r => r.devicename === device)
+    if (!deviceData.length) return null
+    
+    const co2Values = deviceData.map(d => d.co2).filter(c => c != null) as number[]
+    if (!co2Values.length) return null
+    
+    const current = co2Values[co2Values.length - 1]
+    const avg = co2Values.reduce((a, b) => a + b, 0) / co2Values.length
+    const min = Math.min(...co2Values)
+    const max = Math.max(...co2Values)
+    
+    return {
+      current: current?.toFixed(0),
+      average: avg.toFixed(0),
+      min: min.toFixed(0),
+      max: max.toFixed(0),
+      status: current < 400 ? 'Low' : current > 1000 ? 'High' : 'Normal'
+    }
+  }
+})
+
+// Enhanced CO₂ stats with trend analysis
+const getCo2EnhancedStats = computed(() => {
+  return () => {
+    const allDevices = co2ChartDevices.value
+    if (!allDevices.length) return null
+    
+    const allCo2Values: number[] = []
+    const allCo2Data: { value: number; timestamp: string }[] = []
+    
+    allDevices.forEach(device => {
+      const deviceData = co2Raw.value.filter(r => r.devicename === device)
+      deviceData.forEach(d => {
+        if (d.co2 != null) {
+          allCo2Values.push(d.co2)
+          allCo2Data.push({ value: d.co2, timestamp: d.timestamp })
+        }
+      })
+    })
+    
+    if (!allCo2Values.length) return null
+    
+    // Sort by timestamp for trend calculation
+    allCo2Data.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    
+    const current = allCo2Data[allCo2Data.length - 1]?.value || 0
+    const avg = allCo2Values.reduce((a, b) => a + b, 0) / allCo2Values.length
+    const min = Math.min(...allCo2Values)
+    const max = Math.max(...allCo2Values)
+    
+    // Calculate trend (last 5 points)
+    const trendData = allCo2Data.slice(-5).map(d => d.value)
+    let trend = 0
+    let trendStatus = 'Stable'
+    
+    if (trendData.length >= 3) {
+      const firstValue = trendData[0]
+      const lastValue = trendData[trendData.length - 1]
+      const timeSpanHours = trendData.length - 1
+      
+      if (timeSpanHours > 0) {
+        trend = (lastValue - firstValue) / timeSpanHours // ppm per hour
+        
+        if (Math.abs(trend) < 10) trendStatus = 'Stable'  // Less than 10 ppm/hr
+        else if (trend > 0) trendStatus = 'Rising'
+        else trendStatus = 'Falling'
+      }
+    }
+    
+    // Status based on optimal range
+    let status = 'Normal'
+    let alertLevel = 'none'
+    
+    if (current < 300) {
+      status = 'Critical Low'
+      alertLevel = 'critical'
+    } else if (current < 400) {
+      status = 'Low'
+      alertLevel = 'warning'
+    } else if (current > 1200) {
+      status = 'Critical High'
+      alertLevel = 'critical'
+    } else if (current > 1000) {
+      status = 'High'
+      alertLevel = 'warning'
+    } else {
+      status = 'Normal'
+      alertLevel = 'none'
+    }
+    
+    return {
+      current: current.toFixed(0),
+      average: avg.toFixed(0),
+      min: min.toFixed(0),
+      max: max.toFixed(0),
+      status,
+      alertLevel,
+      trend: trend.toFixed(2),
+      trendStatus,
+      trendRate: trend.toFixed(1), // ppm per hour
+      sparklineData: allCo2Data.slice(-12).map(d => d.value), // Last 12 points for mini chart
+      deviceCount: allDevices.length
+    }
+  }
+})
 
 /* ── CO₂ Forecast ─────────────────── */
 const CO2_UNIT = 'ppm'
@@ -929,6 +1654,13 @@ const FORECAST_RATIO = 0.25
 const co2Raw = ref<CO2Reading[]>([])
 const bucket = 60    // minutes per bucket
 const windowMin = 1440  // minutes back (24 hrs)
+
+// Add CO₂ stats expansion state
+const isCo2StatsExpanded = ref(false)
+
+function toggleCo2StatsExpansion() {
+  isCo2StatsExpanded.value = !isCo2StatsExpanded.value
+}
 
 watchEffect(async () => {
   const qs = new URLSearchParams({
@@ -1012,23 +1744,126 @@ const co2Data = computed<ChartData<'line'>>(() => {
 const co2Options: ChartOptions<'line'> = {
   responsive: true,
   maintainAspectRatio: false,
+  layout: {
+    padding: {
+      top: 10,
+      right: 10,
+      bottom: 40,
+      left: 10
+    }
+  },
   scales: {
     x: {
       type: 'category',
-      ticks: { autoSkip: true, maxTicksLimit: 8, maxRotation: 0 }
+      title: {
+        display: true,
+        text: 'Time',
+        color: '#fb923c'
+      },
+      ticks: {
+        autoSkip: true,
+        maxTicksLimit: 8,
+        maxRotation: 0,
+        color: '#fb923c'
+      },
+      grid: {
+        color: '#fb923c33'
+      }
     },
     y: {
-      title: { display: true, text: `CO₂ (${CO2_UNIT})` }
+      title: {
+        display: true,
+        text: `CO₂ (${CO2_UNIT})`,
+        color: '#fb923c'
+      },
+      ticks: {
+        color: '#fb923c'
+      },
+      grid: {
+        color: '#fb923c33'
+      },
+      min: 200,
+      max: 1500
     }
   },
   plugins: {
     tooltip: {
-      callbacks: {
-        label(ctx) {
-          return `${ctx.dataset.label}: ${ctx.parsed.y} ${CO2_UNIT}`
+      enabled: false, // Disable default tooltip for non-blocking experience
+    },
+    legend: {
+      display: true,
+      position: 'top',
+      labels: {
+        color: '#fb923c',
+        usePointStyle: true,
+        padding: 15
+      }
+    },
+    // Add annotation plugin for optimal CO₂ bands
+    annotation: {
+      annotations: {
+        optimalBand: {
+          type: 'box',
+          yMin: 400,
+          yMax: 1000,
+          backgroundColor: 'rgba(34, 197, 94, 0.1)',
+          borderColor: 'rgba(34, 197, 94, 0.3)',
+          borderWidth: 1,
+          label: {
+            display: true,
+            content: 'Normal Range (400-1000 ppm)',
+            position: 'start',
+            color: '#22c55e',
+            padding: 4,
+            font: {
+              size: 10
+            }
+          }
+        },
+        warningLowLine: {
+          type: 'line',
+          yMin: 300,
+          yMax: 300,
+          borderColor: 'rgba(251, 191, 36, 0.8)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          label: {
+            display: true,
+            content: 'Critical Low (300 ppm)',
+            position: 'end',
+            color: '#fbbf24',
+            backgroundColor: 'rgba(251, 191, 36, 0.8)',
+            padding: 2,
+            font: {
+              size: 9
+            }
+          }
+        },
+        warningHighLine: {
+          type: 'line',
+          yMin: 1200,
+          yMax: 1200,
+          borderColor: 'rgba(239, 68, 68, 0.8)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          label: {
+            display: true,
+            content: 'Critical High (1200 ppm)',
+            position: 'end',
+            color: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.8)',
+            padding: 2,
+            font: {
+              size: 9
+            }
+          }
         }
       }
     }
+  },
+  interaction: {
+    intersect: false,
+    mode: 'index'
   }
 }
 
@@ -1361,13 +2196,50 @@ function clearAll() {
   co2ChartDevices.value = []
 }
 
-// Close dropdown on outside click
 onMounted(async () => {
-  // ...existing code...
-  
+  // Load saved devices from sessionStorage FIRST
+  const savedDevices = sessionStorage.getItem(SELECTED_DEVICES_KEY)
+  if (savedDevices) {
+    try {
+      const parsed = JSON.parse(savedDevices)
+      if (Array.isArray(parsed)) {
+        selectedDevices.value = parsed
+      }
+    } catch (e) {
+      console.warn('Failed to parse saved devices:', e)
+    }
+  }
+
+  // Then fetch device names from backend
+  try {
+    allDeviceNamesRaw.value = await $fetch<string[]>('http://localhost:3001/np-devices')
+    backendAvailable.value = true
+  } catch (e) {
+    backendAvailable.value = false
+  }
+
+  // Initialize sessionStorage for last refresh if not set
+  if (!sessionStorage.getItem('last-data-refresh')) {
+    sessionStorage.setItem('last-data-refresh', new Date().toISOString())
+  }
+
+  // Setup outside click detection for dropdown
   if (dropdownRef.value) {
     onClickOutside(dropdownRef, () => (isFilterDropdownOpen.value = false))
   }
+
+  // ✅ ADD THESE EVENT LISTENERS:
+  // Listen for storage events to update when sidebar changes the value
+  window.addEventListener('storage', handleStorageChange)
+  
+  // Also listen for custom events from the sidebar
+  window.addEventListener('refresh-dashboard-data', handleRefreshEvent)
+})
+
+onUnmounted(() => {
+  // Clean up event listeners that the dashboard page listens to
+  window.removeEventListener('storage', handleStorageChange)
+  window.removeEventListener('refresh-dashboard-data', handleRefreshEvent)
 })
 
 // Remove old device filter state
@@ -1555,5 +2427,47 @@ input[type="checkbox"] {
   opacity: 1;
   transform: scaleY(1);
   max-height: 500px;
+}
+
+/* Alert pulse animation */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Enhanced slide-down animation */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: top;
+}
+
+.slide-down-enter-from {
+  opacity: 0;
+  transform: translateY(-10px) scaleY(0.95);
+  max-height: 0;
+}
+
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scaleY(0.95);
+  max-height: 0;
+}
+
+.slide-down-enter-to,
+.slide-down-leave-from {
+  opacity: 1;
+  transform: translateY(0) scaleY(1);
+  max-height: 400px;
 }
 </style>

@@ -32,13 +32,15 @@
         </div>
         <div class="flex items-center justify-between py-1">
           <span>Online</span>
-          <span class="font-bold flex items-center gap-1" style="color: #22c55e;">
-            <span class="inline-block w-2 h-2 rounded-full bg-green-400"></span>
-            Online
+          <span class="font-bold flex items-center gap-1" 
+                :class="isBackendOnline ? 'text-green-400' : 'text-red-400'">
+            <span class="inline-block w-2 h-2 rounded-full" 
+                  :class="isBackendOnline ? 'bg-green-400' : 'bg-red-400'"></span>
+            {{ isBackendOnline ? 'Online' : 'Offline' }}
           </span>
         </div>
         <div class="flex items-center justify-between py-1">
-          <span>Last Update</span>
+          <span>Last Data Refresh</span>
           <span class="font-bold">{{ lastUpdateRelative }}</span>
         </div>
       </div>
@@ -70,6 +72,21 @@
       </NuxtLink>
     </nav>
 
+    <!-- Refresh Button -->
+    <div class="px-4 py-0 mt-auto">
+      <button 
+        @click="refreshPage"
+        class="w-full flex items-center justify-center gap-2 px-4 py-2 
+               bg-orange-900/50 hover:bg-orange-800/70 
+               border border-orange-700 hover:border-orange-600
+               rounded-lg text-orange-300 hover:text-orange-200 
+               text-sm font-medium transition-all duration-200 cursor-pointer"
+      >
+        <Icon name="lucide:refresh-cw" class="h-4 w-4" />
+        <span>Refresh Data</span>
+      </button>
+    </div>
+
     <!-- Footer block with logo.webp at the bottom -->
     <footer class="mt-auto px-4 py-3 text-xs text-orange-700 border-t border-orange-900 flex flex-col gap-2 items-center">
       <span>v1.0.0</span>
@@ -80,12 +97,17 @@
 
 <script setup lang="ts">
 import logoPng from '@/assets/Logo.png'
+import { onMounted, onUnmounted } from 'vue'
 
 interface Item {
   label: string
   to: string
   icon: string
 }
+
+// Backend connectivity status
+const isBackendOnline = ref(true)
+let connectivityInterval: NodeJS.Timeout | null = null
 
 /* Sidebar menu items with routes and icons */
 const items: Item[] = [
@@ -98,7 +120,7 @@ const items: Item[] = [
 import { ref, computed } from 'vue'
 
 // Example: device count from parent/dashboard (replace with prop or inject if needed)
-const deviceCount = ref(12) // Replace with actual device count
+const deviceCount = ref(0) // Replace with actual device count
 
 // Example: database online status (always online for now)
 const dbOnline = ref(true)
@@ -106,9 +128,13 @@ const dbOnline = ref(true)
 // Example: last update timestamp (replace with actual value)
 const lastUpdate = ref(new Date())
 
+// Add a reactive timer to force updates
+const currentTime = ref(new Date())
+let timeInterval: NodeJS.Timeout | null = null
+
 function getRelativeTime(date: Date) {
   if (!date) return '—'
-  const now = new Date()
+  const now = currentTime.value // Use reactive current time instead of new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffMin = Math.floor(diffMs / 60000)
   if (diffMin < 1) return '0m ago'
@@ -117,6 +143,108 @@ function getRelativeTime(date: Date) {
   if (diffHr < 24) return `${diffHr}h ago`
   return date.toLocaleString()
 }
+
+// Function to check backend connectivity
+async function checkBackendStatus() {
+  try {
+    // Use the health endpoint that exists in your backend
+    const response = await fetch('http://localhost:3001/health', {
+      method: 'GET',
+    })
+    
+    if (response.ok) {
+      isBackendOnline.value = true
+    } else {
+      isBackendOnline.value = false
+    }
+  } catch (error) {
+    // If fetch fails (network error, timeout, etc.)
+    isBackendOnline.value = false
+    console.warn('Backend connectivity check failed:', error)
+  }
+}
+
+// Function to fetch device count from backend
+async function fetchDeviceCount() {
+  try {
+    // Fetch the list of devices from your backend
+    const response = await fetch('http://localhost:3001/np-devices', {
+      method: 'GET',
+    })
+    
+    if (response.ok) {
+      const devices = await response.json()
+      // Update device count with the actual number from backend
+      deviceCount.value = Array.isArray(devices) ? devices.length : 0
+    } else {
+      console.warn('Failed to fetch devices, status:', response.status)
+      deviceCount.value = 0
+    }
+  } catch (error) {
+    console.warn('Failed to fetch device count:', error)
+    deviceCount.value = 0
+  }
+}
+
+function refreshPage() {
+  // Update the last refresh time
+  lastUpdate.value = new Date()
+  sessionStorage.setItem('last-data-refresh', new Date().toISOString())
+  
+  // Dispatch event to notify other components
+  window.dispatchEvent(new CustomEvent('refresh-dashboard-data'))
+  
+  // Reload the page
+  window.location.reload()
+}
+
+// Check if sidebar animation has already been shown
+const hasAnimated = ref(false)
+
+onMounted(() => {
+  // Check if animation has been shown in this session
+  const animationShown = sessionStorage.getItem('sidebar-animated')
+  if (animationShown) {
+    hasAnimated.value = true
+  } else {
+    // Mark as animated and store in session
+    sessionStorage.setItem('sidebar-animated', 'true')
+    hasAnimated.value = false
+  }
+  
+  // Load last refresh time from storage or set to current time
+  const lastRefresh = sessionStorage.getItem('last-data-refresh')
+  if (lastRefresh) {
+    lastUpdate.value = new Date(lastRefresh)
+  } else {
+    // First time loading, set current time as last refresh
+    lastUpdate.value = new Date()
+    sessionStorage.setItem('last-data-refresh', new Date().toISOString())
+  }
+  // Start connectivity checking
+  checkBackendStatus() // Initial check
+  fetchDeviceCount()   // Fetch initial device count
+  // Start periodic checks
+  connectivityInterval = setInterval(() => {
+    checkBackendStatus() // Check backend every 30 seconds
+    fetchDeviceCount()   // Update device count every 30 seconds
+  }, 30000)
+
+  // Start time interval for relative time updates
+  timeInterval = setInterval(() => {
+    currentTime.value = new Date()
+  }, 60000) // Update every 60 seconds
+})
+
+onUnmounted(() => {
+  // Clean up the intervals when component is destroyed
+  if (timeInterval) {
+    clearInterval(timeInterval)
+  }
+  if (connectivityInterval) {
+    clearInterval(connectivityInterval)
+  }
+})
 
 const lastUpdateRelative = computed(() => getRelativeTime(lastUpdate.value))
 </script>
@@ -130,6 +258,8 @@ const lastUpdateRelative = computed(() => getRelativeTime(lastUpdate.value))
 /* Subtle sidebar background gradient and pattern */
 .sidebar-bg {
   background: linear-gradient(135deg, #181818 80%, #ff88001a 100%);
+  /* Only animate on first load */
+  animation: v-bind('hasAnimated ? "none" : "fade-in 0.6s ease-out"');
 }
 .sidebar-bg::before {
   content: '';
