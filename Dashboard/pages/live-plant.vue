@@ -1961,17 +1961,21 @@ function getSelectedDevicesPreview(): string {
 }
 
 const SELECTED_DEVICES_KEY = 'dashboard_live_plant_selected_devices'
+
 onMounted(async () => {
-  // Load saved devices from sessionstorage FIRST
-  const savedDevices = sessionStorage.getItem(SELECTED_DEVICES_KEY)
-  if (savedDevices) {
-    try {
-      const parsed = JSON.parse(savedDevices)
-      if (Array.isArray(parsed)) {
-        selectedDevices.value = parsed
+  // Check if we're in the browser before accessing sessionStorage
+  if (process.client && typeof window !== 'undefined' && window.sessionStorage) {
+    // Load saved devices from sessionstorage FIRST
+    const savedDevices = sessionStorage.getItem(SELECTED_DEVICES_KEY)
+    if (savedDevices) {
+      try {
+        const parsed = JSON.parse(savedDevices)
+        if (Array.isArray(parsed)) {
+          selectedDevices.value = parsed
+        }
+      } catch (e) {
+        console.warn('Failed to parse saved devices:', e)
       }
-    } catch (e) {
-      console.warn('Failed to parse saved devices:', e)
     }
   }
 
